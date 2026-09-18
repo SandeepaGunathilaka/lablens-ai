@@ -88,3 +88,13 @@ LabLens AI is an **educational tool, not a diagnostic system**. It never diagnos
 ## License
 
 MIT
+
+
+
+## Run the Project
+
+cd backend
+.\venv\Scripts\python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+cd frontend
+npm run dev
