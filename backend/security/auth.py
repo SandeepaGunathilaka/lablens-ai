@@ -8,6 +8,8 @@ from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError
 
 from database import get_users_collection
+from security.dependencies import get_current_user
+from security.tokens import JWT_EXPIRE_MINUTES, create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -47,6 +49,22 @@ class RegisterRequest(BaseModel):
         if len(value.encode("utf-8")) > BCRYPT_MAX_BYTES:
             raise ValueError(f"Password cannot be longer than {BCRYPT_MAX_BYTES} bytes")
         return value
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.lower()
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int  # seconds until the token expires
 
 
 class UserPublic(BaseModel):
@@ -92,3 +110,35 @@ def register(payload: RegisterRequest, users: Collection = Depends(get_users_col
 
     # response_model=UserPublic strips everything except user_id, name and email.
     return user
+
+
+@router.post("/login", response_model=TokenResponse)
+def login(payload: LoginRequest, users: Collection = Depends(get_users_collection)):
+    user = users.find_one({"email": payload.email})
+
+    if user is None:
+        # Spend the same bcrypt time as a real check, so response timing doesn't
+        # reveal whether the email is registered.
+        pwd_context.dummy_verify()
+        password_ok = False
+    else:
+        password_ok = verify_password(payload.password, user["password_hash"])
+
+    if not password_ok:
+        # One message for both cases, so attackers can't probe which emails exist.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return TokenResponse(
+        access_token=create_access_token(user["user_id"]),
+        expires_in=JWT_EXPIRE_MINUTES * 60,
+    )
+
+
+# Throwaway route to prove the JWT flow end-to-end; remove once real protected routes exist.
+@router.get("/me")
+def me(user_id: str = Depends(get_current_user)):
+    return {"user_id": user_id}

@@ -1,25 +1,6 @@
-import mongomock
 import pytest
-from fastapi.testclient import TestClient
 
-from database import get_users_collection
-from main import app
-from security.auth import ensure_user_indexes, verify_password
-
-
-@pytest.fixture
-def users():
-    """A fresh in-memory users collection for every test."""
-    collection = mongomock.MongoClient().db.users
-    ensure_user_indexes(collection)
-    return collection
-
-
-@pytest.fixture
-def client(users):
-    app.dependency_overrides[get_users_collection] = lambda: users
-    yield TestClient(app)
-    app.dependency_overrides.clear()
+from security.auth import verify_password
 
 
 VALID_USER = {"name": "Ada Lovelace", "email": "ada@example.com", "password": "correct-horse-42"}
