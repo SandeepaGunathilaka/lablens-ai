@@ -33,7 +33,7 @@ Full architecture, agent communication flow, and design rationale: see `/docs` a
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
+venv\Scripts\activate
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 cp .env.example .env          # fill in API keys, DB connection string
