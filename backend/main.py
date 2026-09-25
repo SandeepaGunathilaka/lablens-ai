@@ -1,7 +1,26 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pymongo.errors import PyMongoError
 
-app = FastAPI(title="LabLens AI API", version="0.1.0")
+from database import get_users_collection
+from security.auth import ensure_user_indexes, router as auth_router
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        ensure_user_indexes(get_users_collection())
+    except PyMongoError as exc:
+        logger.warning("Could not create MongoDB indexes (is MongoDB running?): %s", exc)
+    yield
+
+
+app = FastAPI(title="LabLens AI API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -10,6 +29,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
 
 
 @app.get("/")
