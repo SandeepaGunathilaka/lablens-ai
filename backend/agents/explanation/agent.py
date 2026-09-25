@@ -8,7 +8,7 @@ from .models import ExplanationRequest
 from .prompts import SYSTEM_PROMPT
 
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 class ExplanationAgent:
