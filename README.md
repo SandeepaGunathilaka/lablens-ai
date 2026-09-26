@@ -42,6 +42,15 @@ Paste the output into .env as JWT_SECRET_KEY=<secret>. The server refuses to sta
 uvicorn main:app --reload
 ```
 
+The Document Agent also requires the Tesseract system executable. On Windows, install
+it with:
+
+```powershell
+winget install --id UB-Mannheim.TesseractOCR --exact
+```
+
+Restart the terminal after installation so `tesseract` is available on `PATH`.
+
 ### Frontend
 ```bash
 cd frontend
@@ -59,19 +68,49 @@ See `.env.example` for required keys (LLM API key, MongoDB URI, JWT secret).
 3. View extracted results, plain-language explanations, and their sources.
 4. Ask follow-up questions about any test.
 
+### Document Agent API
+
+`POST /agents/document/extract` accepts one multipart field named `file`. Supported
+uploads are CBC or Lipid Profile reports in PDF, PNG, JPG, or JPEG format, up to
+10 MB. It returns raw extracted fields only; it does not label results as normal or
+abnormal and does not diagnose.
+
+```json
+{
+  "extraction_method": "pdf_text",
+  "report_type": "cbc",
+  "results": [
+    {
+      "test": "Hemoglobin",
+      "value": 11.2,
+      "unit": "g/dL",
+      "reference_range": "12-16",
+      "confidence": 0.99,
+      "needs_verification": false
+    }
+  ]
+}
+```
+
+OCR-derived fields are deliberately marked `needs_verification: true`, even when
+Tesseract reports a high character score, because OCR can misread medical digits.
+
 ## Project structure
 
 ```
 backend/
-  coordinator.py
-  document_agent.py
-  retrieval_agent.py
-  explanation_agent.py
-  safety_agent.py
+  agents/
+    document_agent.py
+    safety_agent.py
+  security/
+  tests/
+    fixtures/document_agent/
+    test_document_agent.py
+    test_safety_agent.py
+  main.py
+  requirements.txt
 frontend/
   src/
-docs/
-  workplan.md
 ```
 
 ## Contributors

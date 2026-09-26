@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pymongo.errors import PyMongoError
 
 from agents.safety_agent import router as safety_agent_router
+from agents.document_agent import router as document_agent_router
 from database import get_users_collection
 from security.auth import ensure_user_indexes, router as auth_router
 
@@ -33,6 +34,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(safety_agent_router)
+app.include_router(document_agent_router)
 
 
 @app.get("/")
