@@ -1,5 +1,4 @@
 import pytest
-from fastapi.testclient import TestClient
 
 from agents.safety_agent import (
     DISCLAIMER,
@@ -9,9 +8,6 @@ from agents.safety_agent import (
     check_unsupported_claims,
     check_values,
 )
-from main import app
-
-client = TestClient(app)
 
 ORIGINAL_RESULT = [
     {"test": "Hemoglobin", "value": 11.2, "unit": "g/dL", "reference_range": "12.0-15.5"},
@@ -36,7 +32,7 @@ CLEAN_BODY = (
 CLEAN_DRAFT = f"{CLEAN_BODY}\n\n{DISCLAIMER}"
 
 
-def validate(draft):
+def validate(client, draft):
     payload = {
         "task_id": "task-1",
         "report_id": "report-1",
@@ -53,8 +49,8 @@ def validate(draft):
 # --- Endpoint: one test per required scenario ------------------------------------
 
 
-def test_clean_draft_with_disclaimer_is_approved():
-    body = validate(CLEAN_DRAFT)
+def test_clean_draft_with_disclaimer_is_approved(client):
+    body = validate(client, CLEAN_DRAFT)
 
     assert body == {
         "approved": True,
@@ -83,8 +79,8 @@ def test_clean_draft_with_disclaimer_is_approved():
     ],
     ids=["diagnosis", "medication", "wrong-value", "missing-disclaimer", "unsupported-claim"],
 )
-def test_unsafe_draft_is_rejected(draft, reason):
-    assert validate(draft) == {"approved": False, "reason": reason, "action": "regenerate"}
+def test_unsafe_draft_is_rejected(client, draft, reason):
+    assert validate(client, draft) == {"approved": False, "reason": reason, "action": "regenerate"}
 
 
 # --- check_values -----------------------------------------------------------------
