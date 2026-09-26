@@ -37,6 +37,8 @@ venv\Scripts\activate
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 cp .env.example .env          # fill in API keys, DB connection string
+Generate a JWT secret: python -c "import secrets; print(secrets.token_hex(32))"
+Paste the output into .env as JWT_SECRET_KEY=<secret>. The server refuses to start without it.
 uvicorn main:app --reload
 ```
 
