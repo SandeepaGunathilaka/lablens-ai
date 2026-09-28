@@ -85,6 +85,52 @@ def validate_knowledge_base(directory: Path | str = KNOWLEDGE_BASE_DIR) -> list[
     return documents
 
 
+class KnowledgeBaseLoader:
+    """Lazily load a validated snapshot with canonical-name lookup only.
+
+    A successful snapshot is reused for this instance's lifetime. Returned models
+    are deep copies so callers cannot mutate cached documents or their sources.
+    """
+
+    def __init__(self, directory: Path | str = KNOWLEDGE_BASE_DIR):
+        self.directory = Path(directory)
+        self._documents: list[KnowledgeDocument] | None = None
+        self._by_test_name: dict[str, KnowledgeDocument] = {}
+
+    def _ensure_loaded(self) -> None:
+        if self._documents is not None:
+            return
+
+        documents = validate_knowledge_base(self.directory)
+        index: dict[str, KnowledgeDocument] = {}
+        errors: list[str] = []
+        for document in documents:
+            name = document.test_name.strip().casefold()
+            if name in index:
+                errors.append(
+                    f"{self.directory}: duplicate canonical test name {name!r} "
+                    f"in documents {index[name].id!r} and {document.id!r}"
+                )
+            else:
+                index[name] = document
+        if errors:
+            raise KnowledgeBaseValidationError(errors)
+
+        # Publish only after both document validation and indexing succeed.
+        self._by_test_name = index
+        self._documents = documents
+
+    def load_all(self) -> list[KnowledgeDocument]:
+        self._ensure_loaded()
+        assert self._documents is not None
+        return [document.model_copy(deep=True) for document in self._documents]
+
+    def get_by_test_name(self, test_name: str) -> KnowledgeDocument | None:
+        self._ensure_loaded()
+        document = self._by_test_name.get(test_name.strip().casefold())
+        return document.model_copy(deep=True) if document is not None else None
+
+
 def main() -> int:
     try:
         documents = validate_knowledge_base()

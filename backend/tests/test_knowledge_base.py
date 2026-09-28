@@ -4,7 +4,13 @@ import json
 
 import pytest
 
-from agents.knowledge_base import KnowledgeBaseValidationError, validate_knowledge_base
+from agents import knowledge_base
+from agents.knowledge_base import (
+    KnowledgeBaseLoader,
+    KnowledgeBaseValidationError,
+    KnowledgeDocument,
+    validate_knowledge_base,
+)
 
 
 FIELDS = [
@@ -111,3 +117,107 @@ def test_default_directory_is_independent_of_working_directory(tmp_path, monkeyp
     assert {item.test_name for item in documents} == {
         "Hemoglobin", "WBC", "Platelets", "HDL", "LDL", "Triglycerides", "Total Cholesterol",
     }
+
+
+def test_loader_returns_seven_current_documents():
+    documents = KnowledgeBaseLoader().load_all()
+    assert len(documents) == 7
+    assert all(isinstance(document, KnowledgeDocument) for document in documents)
+    assert {document.test_name for document in documents} == {
+        "Hemoglobin", "WBC", "Platelets", "HDL", "LDL", "Triglycerides", "Total Cholesterol",
+    }
+
+
+def test_loader_is_lazy_and_validates_only_once(tmp_path, document, monkeypatch):
+    path = write_document(tmp_path, document)
+    calls = []
+
+    def tracked_validation(directory):
+        calls.append(directory)
+        return validate_knowledge_base(directory)
+
+    monkeypatch.setattr(knowledge_base, "validate_knowledge_base", tracked_validation)
+    loader = KnowledgeBaseLoader(tmp_path)
+    assert calls == []
+    first = loader.load_all()
+    path.write_text("invalid JSON", encoding="utf-8")
+    assert loader.load_all() == first
+    assert loader.get_by_test_name("Sample") == first[0]
+    assert calls == [tmp_path]
+
+
+@pytest.mark.parametrize("query,expected", [
+    ("Hemoglobin", "Hemoglobin"),
+    ("hemoglobin", "Hemoglobin"),
+    ("  HEMOGLOBIN  ", "Hemoglobin"),
+    ("WBC", "WBC"),
+])
+def test_loader_canonical_lookup_loads_on_demand(query, expected):
+    result = KnowledgeBaseLoader().get_by_test_name(query)
+    assert isinstance(result, KnowledgeDocument)
+    assert result.test_name == expected
+
+
+@pytest.mark.parametrize("query", ["Unknown Test", "Hb", "HDL-C", "", "   "])
+def test_loader_does_not_match_unknown_names_or_aliases(query):
+    assert KnowledgeBaseLoader().get_by_test_name(query) is None
+
+
+def test_loader_retries_after_validation_failure_without_partial_cache(tmp_path, document):
+    write_document(tmp_path, document, "first.json")
+    second = {**document, "id": "second", "test_name": "Second", "title": ""}
+    write_document(tmp_path, second, "second.json")
+    loader = KnowledgeBaseLoader(tmp_path)
+    with pytest.raises(KnowledgeBaseValidationError):
+        loader.load_all()
+    with pytest.raises(KnowledgeBaseValidationError):
+        loader.get_by_test_name("Sample")
+    second["title"] = "Corrected title"
+    write_document(tmp_path, second, "second.json")
+    assert len(loader.load_all()) == 2
+    assert loader.get_by_test_name("Second").title == "Corrected title"
+
+
+@pytest.mark.parametrize("first_name,second_name", [
+    ("Sample", "  SAMPLE  "), ("Straße", "STRASSE"),
+])
+def test_loader_rejects_normalized_duplicate_names_and_can_retry(
+    tmp_path, document, first_name, second_name,
+):
+    write_document(tmp_path, {**document, "test_name": first_name}, "first.json")
+    second = {**document, "id": "second", "test_name": second_name}
+    write_document(tmp_path, second, "second.json")
+    loader = KnowledgeBaseLoader(tmp_path)
+    with pytest.raises(KnowledgeBaseValidationError) as exc:
+        loader.load_all()
+    assert "duplicate canonical test name" in str(exc.value)
+    assert "'sample'" in str(exc.value)  # First document ID, independent of name.
+    assert "'second'" in str(exc.value)
+    second["test_name"] = "Distinct"
+    write_document(tmp_path, second, "second.json")
+    assert len(loader.load_all()) == 2
+    assert loader.get_by_test_name("Distinct").id == "second"
+
+
+def test_loader_accepts_custom_string_directory(tmp_path, document):
+    write_document(tmp_path, document)
+    loader = KnowledgeBaseLoader(str(tmp_path))
+    assert loader.directory == tmp_path
+    assert [item.id for item in loader.load_all()] == ["sample"]
+    assert loader.get_by_test_name(" sample ").id == "sample"
+
+
+def test_loader_returns_deep_copies(tmp_path, document):
+    write_document(tmp_path, document)
+    loader = KnowledgeBaseLoader(tmp_path)
+    documents = loader.load_all()
+    documents[0].test_name = "Changed"
+    documents[0].aliases.append("Changed")
+    documents[0].source.publisher = "Changed"
+    documents.clear()
+    result = loader.get_by_test_name("Sample")
+    assert result.model_dump() == document
+    result.source.title = "Changed"
+    result.aliases.clear()
+    assert loader.load_all()[0].model_dump() == document
+    assert loader.get_by_test_name("Sample").model_dump() == document
