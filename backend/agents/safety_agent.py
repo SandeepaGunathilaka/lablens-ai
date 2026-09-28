@@ -232,11 +232,11 @@ def check_disclaimer(draft_response: str) -> bool:
     return DISCLAIMER_RE.search(draft_response) is not None
 
 
-# --- Endpoint --------------------------------------------------------------------
+# --- Plain functions (callable without HTTP, e.g. by the Coordinator) -------------
 
 
-@router.post("/validate", response_model=ApprovedResponse | RejectedResponse)
-def validate(payload: SafetyValidateRequest, audit_logs: Collection = Depends(get_audit_logs_collection)):
+def run_safety_checks(payload: SafetyValidateRequest) -> tuple[dict[str, bool], str | None]:
+    """Run all five checks. Returns the results and the first failed check's name (None if all passed)."""
     draft = payload.draft_response
     results = [r.model_dump() for r in payload.original_result]
     sources = [s.model_dump() for s in payload.retrieved_sources]
@@ -254,6 +254,27 @@ def validate(payload: SafetyValidateRequest, audit_logs: Collection = Depends(ge
         (name for name, passing_value in PASSING_CHECKS.items() if checks[name] != passing_value),
         None,
     )
+    return checks, failed_check
+
+
+def _decision(checks: dict[str, bool], failed_check: str | None, draft: str) -> ApprovedResponse | RejectedResponse:
+    if failed_check:
+        return RejectedResponse(reason=failed_check)
+    return ApprovedResponse(checks=SafetyChecks(**checks), response=draft)
+
+
+def validate_draft(payload: SafetyValidateRequest) -> ApprovedResponse | RejectedResponse:
+    """Approve or reject a draft. No audit logging; the caller decides what to log."""
+    checks, failed_check = run_safety_checks(payload)
+    return _decision(checks, failed_check, payload.draft_response)
+
+
+# --- Endpoint --------------------------------------------------------------------
+
+
+@router.post("/validate", response_model=ApprovedResponse | RejectedResponse)
+def validate(payload: SafetyValidateRequest, audit_logs: Collection = Depends(get_audit_logs_collection)):
+    checks, failed_check = run_safety_checks(payload)
 
     # Reference example of audit logging: one call per decision, ids and outcome only,
     # never the patient's medical content (lab values, draft text).
@@ -271,6 +292,4 @@ def validate(payload: SafetyValidateRequest, audit_logs: Collection = Depends(ge
         details=details,
     )
 
-    if failed_check:
-        return RejectedResponse(reason=failed_check)
-    return ApprovedResponse(checks=SafetyChecks(**checks), response=draft)
+    return _decision(checks, failed_check, payload.draft_response)
