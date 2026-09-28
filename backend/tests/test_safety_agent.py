@@ -8,6 +8,7 @@ from agents.safety_agent import (
     check_unsupported_claims,
     check_values,
 )
+from agents.document_agent import ExtractedLabResult
 
 ORIGINAL_RESULT = [
     {"test": "Hemoglobin", "value": 11.2, "unit": "g/dL", "reference_range": "12.0-15.5"},
@@ -32,12 +33,12 @@ CLEAN_BODY = (
 CLEAN_DRAFT = f"{CLEAN_BODY}\n\n{DISCLAIMER}"
 
 
-def validate(client, draft):
+def validate(client, draft, original_result=ORIGINAL_RESULT):
     payload = {
         "task_id": "task-1",
         "report_id": "report-1",
         "user_id": "user-1",
-        "original_result": ORIGINAL_RESULT,
+        "original_result": original_result,
         "retrieved_sources": RETRIEVED_SOURCES,
         "draft_response": draft,
     }
@@ -189,3 +190,69 @@ def test_check_disclaimer_present_ignoring_case_and_line_breaks():
 
 def test_check_disclaimer_missing():
     assert check_disclaimer(CLEAN_BODY) is False
+
+
+# --- Document Agent output (unit/range can be null, extra fields) ------------------
+
+# Built with the Document Agent's own model, so this stays in sync with its real output shape.
+DOCUMENT_AGENT_RESULT = [
+    ExtractedLabResult(
+        test="Hemoglobin",
+        value=11.2,
+        unit=None,
+        reference_range=None,
+        confidence=0.62,
+        needs_verification=True,
+    ).model_dump(mode="json")
+]
+
+
+def test_document_agent_payload_has_expected_shape():
+    # Guards the tests below: if the Document Agent's model changes, we want to know.
+    assert DOCUMENT_AGENT_RESULT[0] == {
+        "test": "Hemoglobin",
+        "value": 11.2,
+        "unit": None,
+        "reference_range": None,
+        "confidence": 0.62,
+        "needs_verification": True,
+    }
+
+
+def test_document_agent_result_with_nulls_is_approved(client):
+    draft = f"Your hemoglobin is 11.2 g/dL. Hemoglobin is a protein in red blood cells. {DISCLAIMER}"
+
+    body = validate(client, draft, original_result=DOCUMENT_AGENT_RESULT)
+
+    assert body["approved"] is True
+    assert body["checks"]["patient_values_verified"] is True
+
+
+@pytest.mark.parametrize(
+    "draft, reason",
+    [
+        (f"Your hemoglobin is 17.2 g/dL. {DISCLAIMER}", "patient_values_verified"),
+        (f"Your hemoglobin is 11.2 g/dL. You should take iron supplements. {DISCLAIMER}", "medication_detected"),
+    ],
+    ids=["wrong-value", "medication"],
+)
+def test_document_agent_result_with_nulls_is_rejected(client, draft, reason):
+    body = validate(client, draft, original_result=DOCUMENT_AGENT_RESULT)
+
+    assert body == {"approved": False, "reason": reason, "action": "regenerate"}
+
+
+def test_check_values_with_no_range_still_catches_wrong_value():
+    assert check_values("Your hemoglobin is 11.2.", DOCUMENT_AGENT_RESULT) is True
+    assert check_values("Your hemoglobin is 17.2.", DOCUMENT_AGENT_RESULT) is False
+
+
+def test_check_values_with_no_range_allows_no_range_numbers():
+    # Without a reference range, a range quoted next to the test has nothing to trace back to.
+    draft = "Your hemoglobin is 11.2, below the range of 12.0-15.5."
+    assert check_values(draft, DOCUMENT_AGENT_RESULT) is False
+
+
+def test_check_unsupported_claims_handles_null_unit_and_range():
+    draft = "Your hemoglobin is 11.2. Hemoglobin is a protein in red blood cells."
+    assert check_unsupported_claims(draft, DOCUMENT_AGENT_RESULT, RETRIEVED_SOURCES) is False
