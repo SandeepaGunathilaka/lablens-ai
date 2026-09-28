@@ -1,6 +1,13 @@
+from pathlib import Path
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.explanation import router as explanation_router
+
+load_dotenv(Path(__file__).resolve().parent / ".env")
+
+from api.explanation import router as explanation_router  # noqa: E402
+from explanation_agent.router import router  # noqa: E402
 
 app = FastAPI(
     title="LabLens AI API",
@@ -16,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(explanation_router)
+app.include_router(router)
 
 
 @app.get("/")
