@@ -1,12 +1,14 @@
-import logging
 import math
 import re
 from typing import Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from pymongo.collection import Collection
 
 from agents import safety_config as config
+from database import get_audit_logs_collection
+from logging_service import log_event
 
 # Every approved response must contain this exact text (case and line breaks don't matter).
 DISCLAIMER = (
@@ -15,8 +17,6 @@ DISCLAIMER = (
 )
 
 router = APIRouter(prefix="/agents/safety", tags=["safety-agent"])
-
-logger = logging.getLogger(__name__)
 
 
 # --- Request / response models --------------------------------------------------
@@ -231,7 +231,7 @@ def check_disclaimer(draft_response: str) -> bool:
 
 
 @router.post("/validate", response_model=ApprovedResponse | RejectedResponse)
-def validate(payload: SafetyValidateRequest):
+def validate(payload: SafetyValidateRequest, audit_logs: Collection = Depends(get_audit_logs_collection)):
     draft = payload.draft_response
     results = [r.model_dump() for r in payload.original_result]
     sources = [s.model_dump() for s in payload.retrieved_sources]
@@ -244,10 +244,28 @@ def validate(payload: SafetyValidateRequest):
         "disclaimer_present": check_disclaimer(draft),
     }
 
-    for name, passing_value in PASSING_CHECKS.items():
-        if checks[name] != passing_value:
-            # Log only ids and the check name, never the patient's medical content.
-            logger.info("Safety check %s failed for task %s", name, payload.task_id)
-            return RejectedResponse(reason=name)
+    # The first check (in PASSING_CHECKS order) that failed, or None if all passed.
+    failed_check = next(
+        (name for name, passing_value in PASSING_CHECKS.items() if checks[name] != passing_value),
+        None,
+    )
 
+    # Reference example of audit logging: one call per decision, ids and outcome only,
+    # never the patient's medical content (lab values, draft text).
+    details = {"checks": checks}
+    if failed_check:
+        details["reason"] = failed_check
+    log_event(
+        audit_logs,
+        task_id=payload.task_id,
+        report_id=payload.report_id,
+        user_id=payload.user_id,
+        agent="safety_agent",
+        action="validate",
+        status="rejected" if failed_check else "approved",
+        details=details,
+    )
+
+    if failed_check:
+        return RejectedResponse(reason=failed_check)
     return ApprovedResponse(checks=SafetyChecks(**checks), response=draft)

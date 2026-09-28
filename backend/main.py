@@ -5,9 +5,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo.errors import PyMongoError
 
-from agents.safety_agent import router as safety_agent_router
 from agents.document_agent import router as document_agent_router
-from database import get_users_collection
+from agents.safety_agent import router as safety_agent_router
+from api.audit import router as audit_router
+from database import get_audit_logs_collection, get_users_collection
+from logging_service import ensure_audit_log_indexes
 from security.auth import ensure_user_indexes, router as auth_router
 
 logger = logging.getLogger(__name__)
@@ -17,6 +19,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     try:
         ensure_user_indexes(get_users_collection())
+        ensure_audit_log_indexes(get_audit_logs_collection())
     except PyMongoError as exc:
         logger.warning("Could not create MongoDB indexes (is MongoDB running?): %s", exc)
     yield
@@ -33,8 +36,9 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
-app.include_router(safety_agent_router)
 app.include_router(document_agent_router)
+app.include_router(safety_agent_router)
+app.include_router(audit_router)
 
 
 @app.get("/")
