@@ -234,3 +234,6 @@ build/
 # IDE 
 .vscode/ 
 .idea/
+
+# Generated retrieval evaluation reports
+/backend/evaluation_results/
