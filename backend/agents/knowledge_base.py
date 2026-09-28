@@ -125,6 +125,11 @@ class KnowledgeBaseLoader:
         assert self._documents is not None
         return [document.model_copy(deep=True) for document in self._documents]
 
+    def clear_cache(self) -> None:
+        """Allow a consumer to retry after rejecting a loaded snapshot."""
+        self._documents = None
+        self._by_test_name = {}
+
     def get_by_test_name(self, test_name: str) -> KnowledgeDocument | None:
         self._ensure_loaded()
         document = self._by_test_name.get(test_name.strip().casefold())
