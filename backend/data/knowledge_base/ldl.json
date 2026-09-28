@@ -1,0 +1,24 @@
+{
+  "id": "ldl",
+  "test_name": "LDL",
+  "aliases": [
+    "LDL Cholesterol",
+    "LDL-C",
+    "Low-Density Lipoprotein Cholesterol",
+    "Low-Density Lipoprotein"
+  ],
+  "report_type": "LIPID_PROFILE",
+  "title": "LDL Test",
+
+  "definition": "LDL stands for low-density lipoprotein, which carries cholesterol through the blood.",
+
+  "what_it_measures": "An LDL cholesterol result describes the level of cholesterol carried by LDL in the blood.",
+
+  "general_information": "LDL cholesterol is often called 'bad' cholesterol because excess LDL cholesterol can contribute to plaque buildup in blood vessels.",
+  "source": {
+    "publisher": "CDC",
+    "title": "LDL and HDL Cholesterol and Triglycerides",
+    "url": "https://www.cdc.gov/cholesterol/about/ldl-and-hdl-cholesterol-and-triglycerides.html",
+    "accessed_date": "2026-09-28"
+  }
+}

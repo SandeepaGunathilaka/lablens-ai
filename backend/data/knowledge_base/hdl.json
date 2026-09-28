@@ -1,0 +1,23 @@
+{
+  "id": "hdl",
+  "test_name": "HDL",
+  "aliases": [
+    "HDL Cholesterol",
+    "HDL-C",
+    "High-Density Lipoprotein Cholesterol",
+    "High-Density Lipoprotein"
+  ],
+  "report_type": "LIPID_PROFILE",
+  "title": "HDL test",
+  "definition": "HDL stands for high-density lipoprotein, which carries cholesterol through the blood.",
+
+  "what_it_measures": "An HDL cholesterol result represents the level of cholesterol carried by HDL in the blood.",
+
+  "general_information": "HDL collects cholesterol from the blood and transports it to the liver, which removes it from the body. This role is why HDL cholesterol is often called 'good' cholesterol.",
+  "source": {
+    "publisher": "CDC",
+    "title": "LDL and HDL Cholesterol and Triglycerides",
+    "url": "https://www.cdc.gov/cholesterol/about/ldl-and-hdl-cholesterol-and-triglycerides.html",
+    "accessed_date": "2026-09-28"
+  }
+}
