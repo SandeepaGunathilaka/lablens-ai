@@ -3,7 +3,7 @@ import re
 from typing import Literal
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from pymongo.collection import Collection
 
 from agents import safety_config as config
@@ -23,10 +23,14 @@ router = APIRouter(prefix="/agents/safety", tags=["safety-agent"])
 
 
 class LabResult(BaseModel):
+    # Matches the Document Agent's ExtractedLabResult, which can leave unit and range
+    # empty. Its extra fields (confidence, needs_verification) are accepted and dropped.
+    model_config = ConfigDict(extra="ignore")
+
     test: str
     value: float
-    unit: str
-    reference_range: str
+    unit: str | None = None
+    reference_range: str | None = None
 
 
 class RetrievedSource(BaseModel):
@@ -133,7 +137,7 @@ def _draft_body(draft_response: str, original_result: list[dict]) -> str:
     """The draft without the disclaimer, list markers, or numbers that are part of units."""
     text = _strip_disclaimer(draft_response)
     for result in original_result:
-        unit = result["unit"]
+        unit = result.get("unit") or ""
         if any(ch.isdigit() for ch in unit):
             text = re.sub(re.escape(unit), " ", text, flags=re.IGNORECASE)
     text = SCIENTIFIC_UNIT_RE.sub(" ", text)
@@ -169,7 +173,8 @@ def check_values(draft_response: str, original_result: list[dict]) -> bool:
         ]
         if not mentioned:
             continue
-        allowed = [n for r in mentioned for n in [r["value"], *_numbers(r["reference_range"])]]
+        # A result with no reference range contributes only its value.
+        allowed = [n for r in mentioned for n in [r["value"], *_numbers(r.get("reference_range") or "")]]
         if not all(_is_known_number(n, allowed) for n in _numbers(sentence)):
             return False
     return True
