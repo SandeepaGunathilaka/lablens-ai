@@ -68,3 +68,17 @@ The dataset is tracked; generated reports are already ignored. Threshold
 calibration is a later step and must use only the calibration split. Held-out
 results shown in this baseline must not guide threshold selection, fixture edits,
 or model tuning; doing so would require a new untouched evaluation set.
+
+# Acceptance-policy calibration
+
+Run `python -m agents.calibrate_semantic_retrieval` from backend.
+
+- Calibration uses the 96 calibration cases only (56 supported, 40 negative).
+- The conjunctive policy evaluates both Top-1 similarity and rank-1 / rank-2 similarity margin (`top1_similarity >= similarity_threshold AND similarity_margin >= margin_threshold`).
+- Predeclared selection constraints:
+  - `accepted_precision >= 0.95`
+  - `negative_false_accept_rate <= 0.05`
+  - Maximizes `supported_correct_coverage` among qualifying candidates.
+- The held-out split (48 cases) is strictly firewalled and not used for threshold candidates, selection, or reporting.
+- Calibration selected a policy with `similarity_threshold = 0.0` and `margin_threshold = 0.22541916370391846`, achieving 100% precision, 0% negative false-accept rate, and 12.5% supported coverage (7/56) with 0 wrong accepts on calibration data. Full results are written to `evaluation_results/semantic_calibration.json`.
+

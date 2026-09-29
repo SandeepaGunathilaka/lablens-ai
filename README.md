@@ -261,3 +261,14 @@ and produce a failing exit code; they are never successful negative rejections.
 Normal evaluation tests use synthetic rankings without MiniLM or network access.
 Formal threshold calibration comes later, using calibration cases only; held-out
 results must not be used to tune thresholds or revise the benchmark.
+
+## Semantic retrieval acceptance-policy calibration (Member 2)
+
+From `backend/`, run:
+
+```powershell
+.\venv\Scripts\python.exe -m agents.calibrate_semantic_retrieval
+```
+
+Calibrates a conjunctive acceptance policy (`top1_similarity >= similarity_threshold AND similarity_margin >= margin_threshold`) using the 96 calibration cases only. The selection criteria enforce `accepted_precision >= 0.95` and `negative_false_accept_rate <= 0.05` while maximizing supported correct coverage. Held-out cases (48 queries) remain completely firewalled from threshold selection. Results and candidate search metadata are saved to `backend/evaluation_results/semantic_calibration.json`.
+
