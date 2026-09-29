@@ -238,3 +238,26 @@ Remove-Item Env:RUN_SEMANTIC_RETRIEVER_INTEGRATION
 
 The smoke test checks execution, ranked result structure, and source attribution;
 it does not establish semantic retrieval quality.
+
+## Semantic retrieval baseline evaluation (Member 2)
+
+From `backend/`, run:
+
+```powershell
+.\venv\Scripts\python.exe -m agents.evaluate_semantic_retrieval
+```
+
+The fixed 144-query semantic fixture contains 84 supported cases and 60 negatives,
+with 96 calibration and 48 held-out cases. Labels and wording are fixed before
+predictions. This evaluates ranked search with all seven candidates, not an
+acceptance policy: no threshold exists and negative cases still receive nearest
+neighbors. Full MRR, Top-1, Hit/Recall@3, per-category/test/split metrics, score
+distributions, and exact-keyword comparison on the same supported cases are
+written to `backend/evaluation_results/semantic_baseline.json`.
+
+The real evaluation uses the cached model and existing development index. It does
+not download a model or rebuild an index. Missing/stale index errors are recorded
+and produce a failing exit code; they are never successful negative rejections.
+Normal evaluation tests use synthetic rankings without MiniLM or network access.
+Formal threshold calibration comes later, using calibration cases only; held-out
+results must not be used to tune thresholds or revise the benchmark.
