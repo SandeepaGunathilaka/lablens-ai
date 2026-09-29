@@ -1,18 +1,37 @@
+import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pymongo.errors import PyMongoError
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
+from agents.document_agent import router as document_agent_router  # noqa: E402
+from agents.safety_agent import router as safety_agent_router  # noqa: E402
+from api.audit import router as audit_router  # noqa: E402
 from api.explanation import router as explanation_router  # noqa: E402
+from database import get_audit_logs_collection, get_users_collection  # noqa: E402
 from explanation_agent.router import router  # noqa: E402
+from logging_service import ensure_audit_log_indexes  # noqa: E402
+from security.auth import ensure_user_indexes, router as auth_router  # noqa: E402
 
-app = FastAPI(
-    title="LabLens AI API",
-    version="0.1.0"
-)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        ensure_user_indexes(get_users_collection())
+        ensure_audit_log_indexes(get_audit_logs_collection())
+    except PyMongoError as exc:
+        logger.warning("Could not create MongoDB indexes (is MongoDB running?): %s", exc)
+    yield
+
+
+app = FastAPI(title="LabLens AI API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,6 +41,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
+app.include_router(document_agent_router)
+app.include_router(safety_agent_router)
+app.include_router(audit_router)
 app.include_router(explanation_router)
 app.include_router(router)
 
