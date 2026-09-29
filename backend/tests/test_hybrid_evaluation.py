@@ -50,14 +50,15 @@ def evaluated():
 
 def test_primary_composition():
     rows = evaluation.load_primary_cases()
-    assert len(rows) == 116
+    assert len(rows) == 102
     assert sum(r["expected_document_id"] is not None for r in rows) == 82
-    assert sum(r["expected_document_id"] is None for r in rows) == 34
-    assert sum(r["fixture"] == "keyword" for r in rows) == 68
+    assert sum(r["expected_document_id"] is None for r in rows) == 20
+    assert sum(r["fixture"] == "keyword" for r in rows) == 54
     assert sum(r["fixture"] == "semantic_heldout" for r in rows) == 48
     assert all(r["split"] == "held_out" for r in rows if r["fixture"] == "semantic_heldout")
     assert all(r["split"] != "calibration" for r in rows)
-    assert sum(not r["query"].strip() for r in rows) == 2
+    assert all(r["expected_document_id"] is not None for r in rows if r["fixture"] == "keyword")
+    assert sum(not r["query"].strip() for r in rows) == 0
 
 
 @pytest.mark.parametrize("fixture", ["keyword", "semantic"])
@@ -227,8 +228,12 @@ def test_complete_report_and_serialization(tmp_path, monkeypatch):
     report = evaluation.build_report(retriever=hybrid,store=fake_store())
     assert hybrid.retrieve.call_count == 116
     assert report["primary_dataset"]["supported"] == 82
-    assert report["primary_dataset"]["negative"] == 34
+    assert report["primary_dataset"]["negative"] == 20
+    assert report["primary_dataset"]["total"] == 102
     assert report["primary_dataset"]["semantic_calibration_included"] is False
+    assert report["primary_independent_evaluation"]["counts"]["total"] == 102
+    assert report["keyword_contract_diagnostic"]["counts"]["total_keyword_cases"] == 68
+    assert report["keyword_contract_diagnostic"]["counts"]["contract_negative_cases"] == 14
     assert report["evaluation"]["git_revision"] is None
     assert report["frozen_policy"] == {"similarity_threshold":0.,"margin_threshold":0.22541916370391846}
     assert report["evaluation"]["embedding_dimension"] == 384
@@ -384,4 +389,71 @@ def test_audit_error_and_false_accept_semantics():
     assert route["keyword_miss_count"] == 0
     assert route["semantic_fallback_count"] == 0
     assert route["error_count"] == 1
+
+def test_step_14_2_protocol_requirements():
+    """Verify all Step 14.2 protocol specifications:
+    - primary total exactly 102 (82 supported, 20 negative)
+    - all 54 keyword supported cases included
+    - all 48 semantic held-out cases included
+    - all 14 keyword-contract negative cases excluded from primary metrics
+    - semantic calibration cases excluded
+    - keyword-contract negatives remain present in diagnostic section
+    - keyword fixture labels remain unchanged
+    - unsupported_4 and unsupported_12 remain keyword-contract negatives but do not contribute to primary semantic false-accept metrics
+    - unsupported_9 and unsupported_10 remain validation errors in diagnostic analysis
+    - primary negative metrics use only 12 unsupported_medical and 8 unrelated
+    - primary accepted precision arithmetic
+    - primary supported coverage arithmetic
+    - primary negative false-accept arithmetic
+    """
+    primary_cases = evaluation.load_primary_cases()
+    assert len(primary_cases) == 102
+    assert sum(c["expected_document_id"] is not None for c in primary_cases) == 82
+    assert sum(c["expected_document_id"] is None for c in primary_cases) == 20
+
+    # 54 keyword supported + 48 semantic held-out
+    assert sum(c["fixture"] == "keyword" for c in primary_cases) == 54
+    assert sum(c["fixture"] == "semantic_heldout" for c in primary_cases) == 48
+    assert all(c["expected_document_id"] is not None for c in primary_cases if c["fixture"] == "keyword")
+
+    # 14 keyword negatives excluded from primary
+    kw_cases = evaluation.load_keyword_contract_cases()
+    assert len(kw_cases) == 68
+    kw_neg_ids = {c["id"] for c in kw_cases if c["expected_document_id"] is None}
+    assert len(kw_neg_ids) == 14
+    primary_ids = {c["id"] for c in primary_cases}
+    assert kw_neg_ids.isdisjoint(primary_ids)
+
+    # unsupported_4, unsupported_12, unsupported_9, unsupported_10 in keyword negatives
+    assert {"unsupported_4", "unsupported_12", "unsupported_9", "unsupported_10"}.issubset(kw_neg_ids)
+
+    # Primary negative categories are exactly 12 unsupported_medical and 8 unrelated
+    primary_neg = [c for c in primary_cases if c["expected_document_id"] is None]
+    assert len(primary_neg) == 20
+    assert sum(c["category"] == "unsupported_medical" for c in primary_neg) == 12
+    assert sum(c["category"] == "unrelated" for c in primary_neg) == 8
+
+    # No calibration cases
+    assert all(c.get("split") != "calibration" for c in primary_cases)
+
+    # Test report structure with mock
+    mock_hybrid = Mock(retrieve=Mock(side_effect=lambda q: result("keyword", "hemoglobin") if q else result("none")))
+    report = evaluation.build_report(retriever=mock_hybrid, store=fake_store())
+
+    # Primary evaluation contains 102 cases
+    assert report["primary_independent_evaluation"]["counts"]["total"] == 102
+    assert report["primary_independent_evaluation"]["counts"]["supported"] == 82
+    assert report["primary_independent_evaluation"]["counts"]["negative"] == 20
+
+    # Diagnostic section contains 68 cases, including the 14 negatives
+    diag = report["keyword_contract_diagnostic"]
+    assert diag["counts"]["total_keyword_cases"] == 68
+    assert diag["counts"]["supported_cases"] == 54
+    assert diag["counts"]["contract_negative_cases"] == 14
+    diag_case_ids = {c["id"] for c in diag["cases"]}
+    assert diag_case_ids == kw_neg_ids
+
+    # Negative category metrics has unsupported_medical (12) and unrelated (8)
+    assert report["negative_category_metrics"]["unsupported_medical"]["total_queries"] == 12
+    assert report["negative_category_metrics"]["unrelated"]["total_queries"] == 8
 

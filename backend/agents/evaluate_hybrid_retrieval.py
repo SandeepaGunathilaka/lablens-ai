@@ -43,18 +43,50 @@ def input_hashes(keyword_path, semantic_path, kb_directory) -> dict:
 
 def load_primary_cases(keyword_path=keyword_evaluation.DATASET_PATH,
                        semantic_path=semantic_evaluation.DATASET_PATH) -> list[dict]:
+    """Primary operational hybrid benchmark: 54 keyword supported + 48 semantic held-out = 102 cases.
+
+    Excludes the 14 keyword-contract negative cases because their labels test exact keyword
+    rejection rather than universal semantic irrelevance.
+    """
+    keyword = keyword_evaluation.load_dataset(keyword_path)
+    semantic = semantic_evaluation.load_dataset(semantic_path)
+    kw_supported = [q for q in keyword.queries if q.expected_document_id is not None]
+    if len(keyword.queries) != 68 or len(kw_supported) != 54:
+        raise ValueError(f"Invalid primary composition for keyword: expected 68 total with 54 supported; got {len(keyword.queries)}/{len(kw_supported)}")
+    sem_heldout = [q for q in semantic.queries if q.split == "held_out"]
+    sem_supported = [q for q in sem_heldout if q.expected_document_id is not None]
+    if len(sem_heldout) != 48 or len(sem_supported) != 28:
+        raise ValueError(f"Invalid primary composition for semantic held-out: expected 48 total with 28 supported; got {len(sem_heldout)}/{len(sem_supported)}")
+    cases = [{**q.model_dump(), "fixture": "keyword", "split": "keyword_contract", "group_id": None}
+             for q in kw_supported]
+    cases += [{**q.model_dump(), "fixture": "semantic_heldout"}
+              for q in sem_heldout]
+    if len(cases) != 102 or len({(q['fixture'], q['id']) for q in cases}) != 102:
+        raise ValueError(f"Invalid primary composition: expected 102 distinct fixture-qualified cases; got {len(cases)}")
+    return cases
+
+
+def load_keyword_contract_cases(keyword_path=keyword_evaluation.DATASET_PATH) -> list[dict]:
+    """All 68 keyword fixture cases for diagnostic evaluation under HybridRetriever."""
+    keyword = keyword_evaluation.load_dataset(keyword_path)
+    cases = [{**q.model_dump(), "fixture": "keyword", "split": "keyword_contract", "group_id": None}
+             for q in keyword.queries]
+    if len(cases) != 68 or len({q['id'] for q in cases}) != 68:
+        raise ValueError(f"Keyword contract diagnostic requires exactly 68 distinct cases; got {len(cases)}")
+    return cases
+
+
+def load_all_cases(keyword_path=keyword_evaluation.DATASET_PATH,
+                   semantic_path=semantic_evaluation.DATASET_PATH) -> list[dict]:
+    """All 116 unique evaluation cases across keyword (68) and semantic held-out (48)."""
     keyword = keyword_evaluation.load_dataset(keyword_path)
     semantic = semantic_evaluation.load_dataset(semantic_path)
     cases = [{**q.model_dump(), "fixture": "keyword", "split": "keyword_contract", "group_id": None}
              for q in keyword.queries]
     cases += [{**q.model_dump(), "fixture": "semantic_heldout"}
               for q in semantic.queries if q.split == "held_out"]
-    for fixture, total, supported in (("keyword", 68, 54), ("semantic_heldout", 48, 28)):
-        selected = [q for q in cases if q["fixture"] == fixture]
-        if len(selected) != total or sum(q["expected_document_id"] is not None for q in selected) != supported:
-            raise ValueError(f"Invalid primary composition for {fixture}: expected {total}/{supported}")
     if len(cases) != 116 or len({(q['fixture'], q['id']) for q in cases}) != 116:
-        raise ValueError("Primary evaluation requires 116 distinct fixture-qualified cases")
+        raise ValueError(f"All evaluation cases require exactly 116 distinct cases; got {len(cases)}")
     return cases
 
 
@@ -194,17 +226,105 @@ def calculate_metrics(rows: list[dict]) -> dict:
 
 def analyze_rows(rows):
     keyword = [r for r in rows if r["fixture"] == "keyword"]
+    keyword_supported = [r for r in keyword if r["expected_document_id"] is not None]
+    keyword_negatives = [r for r in keyword if r["expected_document_id"] is None]
     semantic = [r for r in rows if r["fixture"] == "semantic_heldout"]
-    negatives = {"keyword_negative": [r for r in keyword if r["expected_document_id"] is None],
-                 **{category: [r for r in semantic if r["category"] == category]
-                    for category in semantic_evaluation.NEGATIVE_CATEGORIES}}
-    return {"primary_metrics": calculate_metrics(rows), "routing_metrics": routing_metrics(rows),
-            "keyword_subset": calculate_metrics(keyword), "semantic_heldout_subset": calculate_metrics(semantic),
-            "supported_category_metrics": {category: calculate_metrics([r for r in semantic if r["category"] == category])
-                                           for category in semantic_evaluation.SUPPORTED_CATEGORIES},
-            "per_test_metrics": {identifier: calculate_metrics([r for r in semantic if r["expected_document_id"] == identifier])
-                                 for identifier in DOCUMENT_IDS},
-            "negative_category_metrics": {category: calculate_metrics(selected) for category, selected in negatives.items()}}
+    primary_rows = [r for r in rows if not (r["fixture"] == "keyword" and r["expected_document_id"] is None)]
+
+    primary_metrics = calculate_metrics(primary_rows)
+    primary_routing = routing_metrics(primary_rows)
+
+    diagnostic_cases = []
+    for r in keyword_negatives:
+        if r["error"] is not None:
+            c_outcome = "input_validation_error"
+        elif r["method"] == "semantic" and r["found"] is True:
+            c_outcome = "semantic_fallback_accepted"
+        elif r["found"] is False:
+            c_outcome = "semantic_fallback_abstained"
+        elif r["method"] == "keyword" and r["found"] is True:
+            c_outcome = "keyword_accepted"
+        else:
+            c_outcome = "unknown"
+        diagnostic_cases.append({
+            "id": r["id"],
+            "query": r["query"],
+            "category": r["category"],
+            "expected_document_id": r["expected_document_id"],
+            "contract_outcome": c_outcome,
+            "keyword_rejected": r["routing"]["keyword_hit"] is False or r["error"] is not None,
+            "found": r["found"],
+            "method": r["method"],
+            "returned_document_id": r["returned_document_id"],
+            "semantic_decision": r.get("semantic_decision"),
+            "error": r.get("error"),
+        })
+
+    keyword_contract_diag = {
+        "description": (
+            "Diagnostic evaluation of all 68 keyword fixture cases under HybridRetriever. "
+            "Separates deterministic exact canonical/alias behavior from hybrid semantic retrieval. "
+            "The 14 keyword-contract negatives test exact keyword rejection rather than universal semantic irrelevance."
+        ),
+        "counts": {
+            "total_keyword_cases": len(keyword),
+            "supported_cases": len(keyword_supported),
+            "contract_negative_cases": len(keyword_negatives),
+            "exact_keyword_hits": sum(r["routing"]["keyword_hit"] is True for r in keyword),
+            "semantic_fallbacks": sum(r["routing"]["semantic_attempted"] is True for r in keyword),
+            "semantic_accepts": sum(r["method"] == "semantic" and r["found"] is True for r in keyword),
+            "abstentions": sum(r["found"] is False for r in keyword),
+            "invalid_input_errors": sum(r["error"] is not None for r in keyword),
+            "keyword_correctly_rejected": sum(
+                r["routing"]["keyword_hit"] is False or r["error"] is not None
+                for r in keyword_negatives
+            ),
+        },
+        "cases": diagnostic_cases,
+        "keyword_subset_metrics": calculate_metrics(keyword),
+    }
+
+    primary_evaluation = {
+        "description": (
+            "Primary operational hybrid retrieval benchmark comprising 54 keyword-supported queries "
+            "and 48 independent semantic held-out queries (82 supported, 20 negative; total 102). "
+            "Excludes keyword-contract negative cases because their labels define deterministic keyword "
+            "behavior rather than universal semantic relevance."
+        ),
+        "counts": {
+            "total": len(primary_rows),
+            "supported": sum(r["expected_document_id"] is not None for r in primary_rows),
+            "negative": sum(r["expected_document_id"] is None for r in primary_rows),
+            "keyword_supported": len(keyword_supported),
+            "semantic_heldout_supported": sum(r["expected_document_id"] is not None for r in semantic),
+            "semantic_heldout_negative": sum(r["expected_document_id"] is None for r in semantic),
+        },
+        "metrics": primary_metrics,
+        "routing": primary_routing,
+    }
+
+    negatives = {
+        "keyword_negative": keyword_negatives,
+        **{category: [r for r in semantic if r["category"] == category]
+           for category in semantic_evaluation.NEGATIVE_CATEGORIES},
+    }
+
+    return {
+        "primary_independent_evaluation": primary_evaluation,
+        "primary_metrics": primary_metrics,
+        "routing_metrics": primary_routing,
+        "keyword_subset": calculate_metrics(keyword),
+        "keyword_supported_subset": calculate_metrics(keyword_supported),
+        "keyword_contract_diagnostic": keyword_contract_diag,
+        "semantic_heldout_subset": calculate_metrics(semantic),
+        "supported_category_metrics": {category: calculate_metrics([r for r in semantic if r["category"] == category])
+                                       for category in semantic_evaluation.SUPPORTED_CATEGORIES},
+        "semantic_category_metrics": {category: calculate_metrics([r for r in semantic if r["category"] == category])
+                                      for category in semantic_evaluation.SUPPORTED_CATEGORIES},
+        "per_test_metrics": {identifier: calculate_metrics([r for r in semantic if r["expected_document_id"] == identifier])
+                             for identifier in DOCUMENT_IDS},
+        "negative_category_metrics": {category: calculate_metrics(selected) for category, selected in negatives.items()},
+    }
 
 
 def build_report(*, retriever, store, observer=None,
@@ -215,26 +335,31 @@ def build_report(*, retriever, store, observer=None,
         raise ValueError("Frozen fixture or KB fingerprints changed; evaluation aborted")
     if asdict(FROZEN_POLICY) != {"similarity_threshold": 0.0, "margin_threshold": 0.22541916370391846}:
         raise ValueError("Frozen semantic policy changed")
-    cases = load_primary_cases(keyword_path, semantic_path)
-    rows = evaluate_cases(cases, retriever, observer)
+    all_cases = load_all_cases(keyword_path, semantic_path)
+    all_rows = evaluate_cases(all_cases, retriever, observer)
     if input_hashes(keyword_path, semantic_path, store.kb_directory) != hashes:
         raise ValueError("Fixture or KB changed during evaluation")
+    primary_rows = [r for r in all_rows if not (r["fixture"] == "keyword" and r["expected_document_id"] is None)]
+    analyzed = analyze_rows(all_rows)
     return {"evaluation": {
-        "name": "keyword_first_hybrid_primary", "generated_at": datetime.now(timezone.utc).isoformat(),
+        "name": "keyword_first_hybrid_primary",
+        "protocol_version": "Step 14.2 (102-case primary + keyword contract diagnostic)",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         **hashes, "git_revision": keyword_evaluation.git_revision(), "python_version": platform.python_version(),
         "embedding_model": store.model_name, "model_revision": store.model_revision, "embedding_dimension": store.dimension,
         "embedding_text_version": EMBEDDING_TEXT_VERSION, "normalized_embeddings": True,
         "chroma_collection_name": store.collection_name, "distance_metric": "cosine",
         "source_index_directory": str(source_directory) if source_directory is not None else None,
         "index_access": "temporary byte copy of existing index; no build or rebuild",
-        "error_policy": "Errors (including rejected blank fixture inputs) remain incorrect in denominators, not abstentions",
-        "label_caveat": "Keyword negative labels describe the exact-match contract, not universal semantic unsupportedness",
+        "error_policy": "Errors remain incorrect in denominators, not abstentions",
+        "label_caveat": "Keyword negative labels describe the exact-match contract, not universal semantic unsupportedness. Evaluated separately in keyword_contract_diagnostic.",
     }, "frozen_policy": asdict(FROZEN_POLICY),
-        "primary_dataset": {"total":116, "supported":82, "negative":34,
-                            "keyword":{"total":68,"supported":54,"negative":14},
-                            "semantic_heldout":{"total":48,"supported":28,"negative":20},
-                            "semantic_calibration_included":False},
-        **analyze_rows(rows), "queries": rows}
+        "primary_dataset": {"total": 102, "supported": 82, "negative": 20,
+                            "keyword_supported": 54,
+                            "semantic_heldout": {"total": 48, "supported": 28, "negative": 20},
+                            "keyword_negatives_in_primary": False,
+                            "semantic_calibration_included": False},
+        **analyzed, "queries": primary_rows, "all_queries": all_rows}
 
 
 def write_report(report, path=REPORT_PATH):
