@@ -222,7 +222,7 @@ freshness, including normalization and embedding-text version; the semantic laye
 also checks each recovered document fingerprint. Errors propagate without an
 automatic rebuild. Returned documents are isolated copies of curated KB records.
 
-This is ranked search only: no acceptance threshold or hybrid retrieval exists.
+The search() method remains ranked search only. The retrieve() method applies the frozen policy documented below; hybrid retrieval is not implemented.
 `similarity = 1 - distance` is cosine similarity, not probability or confidence,
 and is not clamped. Formal semantic evaluation comes later in Step 12.3.
 
@@ -250,7 +250,7 @@ From `backend/`, run:
 The fixed 144-query semantic fixture contains 84 supported cases and 60 negatives,
 with 96 calibration and 48 held-out cases. Labels and wording are fixed before
 predictions. This evaluates ranked search with all seven candidates, not an
-acceptance policy: no threshold exists and negative cases still receive nearest
+acceptance policy: this runner applies no threshold and negative cases still receive nearest
 neighbors. Full MRR, Top-1, Hit/Recall@3, per-category/test/split metrics, score
 distributions, and exact-keyword comparison on the same supported cases are
 written to `backend/evaluation_results/semantic_baseline.json`.
@@ -259,7 +259,7 @@ The real evaluation uses the cached model and existing development index. It doe
 not download a model or rebuild an index. Missing/stale index errors are recorded
 and produce a failing exit code; they are never successful negative rejections.
 Normal evaluation tests use synthetic rankings without MiniLM or network access.
-Formal threshold calibration comes later, using calibration cases only; held-out
+Threshold calibration uses calibration cases only; held-out
 results must not be used to tune thresholds or revise the benchmark.
 
 ## Semantic retrieval acceptance-policy calibration (Member 2)
@@ -272,3 +272,29 @@ From `backend/`, run:
 
 Calibrates a conjunctive acceptance policy (`top1_similarity >= similarity_threshold AND similarity_margin >= margin_threshold`) using the 96 calibration cases only. The selection criteria enforce `accepted_precision >= 0.95` and `negative_false_accept_rate <= 0.05` while maximizing supported correct coverage. Held-out cases (48 queries) remain completely firewalled from threshold selection. Results and candidate search metadata are saved to `backend/evaluation_results/semantic_calibration.json`.
 
+
+## Frozen semantic acceptance (Member 2 Step 12.5)
+
+`SemanticRetriever.search()` remains pure ranked search.
+`SemanticRetriever.retrieve(query)` calls `search(query, n_results=2)` and returns
+an immutable `SemanticRetrievalDecision`. The frozen `SemanticAcceptancePolicy`
+accepts only when both inclusive comparisons hold:
+
+- Top-1 similarity >= **0.0**.
+- Top-1 similarity minus Top-2 similarity >= **0.22541916370391846**.
+
+These values were selected only from Step 12.4A calibration and retained unchanged
+in Step 12.4B held-out evaluation. No calibration code or report loading runs in
+runtime retrieval. Zero or one candidate causes abstention without an invented
+margin. Accepted decisions retain the authoritative Top-1 document object;
+abstentions have `document=None` and retain available candidates for inspection.
+Search errors propagate instead of being converted into abstentions.
+
+Held-out accepted precision was **100% (3/3 accepted)**, supported correct coverage
+was **10.71% (3/28 supported)**, and negative false-accept rate was **0% (0/20)**.
+The policy is intentionally conservative; these figures do not mean 100% semantic
+retrieval accuracy. Similarity is not a probability or confidence score.
+
+Retrieval does not write query text, vectors, decisions, patient identifiers, or
+history. It never rebuilds Chroma. Keyword-plus-semantic hybrid retrieval is not
+implemented.
