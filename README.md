@@ -123,15 +123,46 @@ backend/
   agents/
     document_agent.py
     safety_agent.py
+  explanation_agent/    # Explanation Agent (Member 3)
   security/
   tests/
     fixtures/document_agent/
     test_document_agent.py
     test_safety_agent.py
+    test_explanation_service.py
+    test_status.py
   main.py
   requirements.txt
 frontend/
   src/
+```
+
+## Explanation Agent
+
+`POST /explanation` turns one lab result into four educational fields. It does not assign a personal condition, recommend medication, or change the recorded value.
+
+The Coordinator should calculate status with `calculate_status` and pass it in. If `status` is omitted, the agent uses that same function. A missing or unreadable reference range stays `unknown`.
+
+```python
+from explanation_agent import calculate_status, build_draft_response, ExplanationRequest
+```
+
+`build_draft_response` joins `what_it_measures`, `explanation`, `possible_meaning`, and `recommended_discussion`, then appends the standard disclaimer once. Send that string to the Safety Agent. Do not append the disclaimer again.
+
+Optional `retrieved_sources` carries Retrieval Agent citations (`title`, `excerpt`, optional `url` and `source_id`). The prompt may use only those sources. With no usable source, the agent says there is not enough reliable information.
+
+Regeneration: send `rejection_feedback` and, when you have it, `previous_draft`. The response sets `regenerated` to true.
+
+| Environment variable | Purpose |
+|---|---|
+| `EXPLANATION_PROVIDER` | `openai` (default) or `template` for a local source-only preview |
+| `EXPLANATION_MODEL` | OpenAI model name, default `gpt-4o-mini` |
+| `OPENAI_API_KEY` | Required for `openai`. If it is missing, the agent returns `generation_mode: unavailable` and does not invent an explanation |
+| `EXPLANATION_RATE_LIMIT` | Requests per minute per client. `0` disables the limit |
+
+```bash
+cd backend
+python -m pytest
 ```
 
 ## Contributors
