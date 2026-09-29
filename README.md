@@ -317,3 +317,61 @@ Other query text is forwarded unchanged; existing components own normalization.
 Infrastructure and integrity exceptions propagate instead of becoming no-match.
 The component stores no query history and performs no Chroma writes or rebuilds.
 No runtime calibration or RetrievalRequest/RetrievalResponse orchestration is added.
+
+## End-to-end hybrid evaluation (Member 2 Step 14)
+
+From `backend/`, run `python -m agents.evaluate_hybrid_retrieval`.
+The primary benchmark contains all **68 frozen keyword cases** and only the
+**48 semantic held-out cases**: **116 total, 82 supported and 34 negative**.
+The 96 semantic calibration cases are excluded; they are not independent test
+data. No new labels or fixture are created. The runner calls the public
+`HybridRetriever.retrieve()` for every case; observers record routing without
+reimplementing it. No calibration or threshold changes occur.
+
+The report is `backend/evaluation_results/hybrid_evaluation.json`, including
+accuracy, accepted precision, supported coverage, negative false accepts, method
+utilization, routing, subset/category/test breakdowns, and query-level decisions.
+Accepted precision is not overall retrieval accuracy. Keyword negative labels
+retain their original exact-match meaning; they are not universal statements of
+semantic irrelevance. Results are reported against those unchanged labels.
+
+The two blank keyword cases are still executed. The hybrid API rejects them;
+these are recorded as errors, retained in denominators, and never counted as
+correct abstentions. A report containing any errors produces exit code 1.
+Infrastructure/integrity failures receive the same explicit error treatment.
+
+The CLI verifies frozen fixture/KB hashes before execution and checks them again
+afterward. It reads the existing development index into a temporary byte copy,
+then queries that copy in a child process using cached MiniLM. This isolates any
+Chroma internal housekeeping from the development files; it does not build or
+rebuild an index. The temporary copy is removed after the child exits, and source
+index hashes must remain unchanged. Normal tests use mocks without MiniLM.
+
+**Primary 116-case results (keyword SHA-256 `ee70d2ff`, semantic SHA-256 `e481c484`, KB SHA-256 `f704ff3d`):**
+
+| Metric | Value |
+|---|---|
+| Overall decision accuracy | 75.00% (87/116) |
+| Accepted precision | 96.61% (57/59 accepted) |
+| Supported correct coverage | 69.51% (57/82 supported) |
+| Supported abstention rate | 30.49% (25/82) |
+| Negative false-accept rate | 5.88% (2/34) |
+| Negative abstention rate | 88.24% (30/34) |
+| Correct keyword accepts | 54 |
+| Correct semantic accepts | 3 |
+| Wrong keyword accepts | 0 |
+| Wrong semantic accepts | 2 |
+| Correct abstentions | 30 |
+| Missed supported | 25 |
+| Errors (blank queries) | 2 |
+
+**Routing:** 54 keyword hits, 60 keyword misses => 60 semantic fallbacks => 5 semantic accepts, 55 semantic abstentions. No keyword hit triggered a semantic call.
+
+**Keyword subset (68):** accuracy 94.12% (64/68), precision 96.43% (54/56 accepted), coverage 100% (54/54 supported). Negative subset (14 cases): 10 correct abstentions, 2 negative false accepts (`unsupported_4` 'Hemoglob' and `unsupported_12` 'Triglycer'), and 2 blank-query validation errors (`unsupported_9` '' and `unsupported_10` '   '). Negative false-accept rate is 14.29% (2/14) and negative abstention rate is 71.43% (10/14).
+
+**Semantic held-out subset (48):** 3 correct semantic accepts, 25 missed supported, 0 wrong accepts, 20 correct abstentions, 0 errors. Precision 100% (3/3), supported coverage 10.71% (3/28), negative false-accept rate 0.00% (0/20), and negative abstention rate 100% (20/20).
+
+**Audit reconciliation of false accepts and errors:**
+The 2 negative false accepts (and 2 wrong semantic accepts) in primary totals are genuine semantic fallback acceptances of keyword fixture negative queries: `unsupported_4` ('Hemoglob') and `unsupported_12` ('Triglycer'). Under the strict keyword benchmark contract, truncated prefixes are labelled negative (`expected_document_id=None`). When the keyword matcher missed them, semantic fallback accepted them as hemoglobin and triglycerides respectively due to high similarity and sufficient margin.
+The 2 errors are blank/whitespace queries (`unsupported_9` and `unsupported_10`) that failed input validation with `ValueError` before retrieval routing; they are recorded as `outcome="error"`, have `found=None`, remain in overall denominators, and are strictly separate from false accepts.
+On the independent 48-case semantic held-out subset, zero false accepts occurred.
