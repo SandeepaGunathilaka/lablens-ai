@@ -51,6 +51,27 @@ winget install --id UB-Mannheim.TesseractOCR --exact
 
 Restart the terminal after installation so `tesseract` is available on `PATH`.
 
+### Embedding model setup
+
+The embedding component uses `sentence-transformers/all-MiniLM-L6-v2` on CPU by
+default. Configure it with the `EMBEDDING_*` settings in `backend/.env.example`.
+No model is loaded at import or construction time. The first real encoding
+downloads the public model unless cached; `EMBEDDING_LOCAL_FILES_ONLY=true`
+requires local cached files. An optional model revision can be set for repeatable
+experiments. Model files use the library's external cache, not the repository.
+
+Unit tests inject fake models and do not download weights. The real-model test
+is skipped unless explicitly enabled. From `backend/`, run it with:
+
+```powershell
+$env:RUN_EMBEDDING_INTEGRATION = '1'
+.\venv\Scripts\python.exe -m pytest tests/test_embedding_integration.py -m embedding_integration -s
+Remove-Item Env:RUN_EMBEDDING_INTEGRATION
+```
+
+This optional test may download the model unless local-files-only mode is set.
+It checks vector dimensions, normalization, ordering, and input token lengths.
+
 ### Frontend
 ```bash
 cd frontend
