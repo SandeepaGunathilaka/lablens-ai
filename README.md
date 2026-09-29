@@ -207,3 +207,34 @@ Remove-Item Env:RUN_VECTOR_STORE_INTEGRATION
 
 This component returns nearest vector candidates only. It does not implement a
 SemanticRetriever, relevance thresholds, or patient explanations.
+
+## Ranked semantic search (Member 2)
+
+`agents.semantic_retriever.SemanticRetriever` composes the existing embedding
+service, vector store, and knowledge-base loader. `search(query, n_results=3)`
+returns ranked `SemanticSearchResult` objects with authoritative documents and
+source attribution. Query text and vectors remain transient; search performs no
+index builds, rebuilds, writes, or query logging.
+
+The encoder's model/revision must match the store configuration. Query vectors
+must have the configured dimension and unit norm. The vector store checks index
+freshness, including normalization and embedding-text version; the semantic layer
+also checks each recovered document fingerprint. Errors propagate without an
+automatic rebuild. Returned documents are isolated copies of curated KB records.
+
+This is ranked search only: no acceptance threshold or hybrid retrieval exists.
+`similarity = 1 - distance` is cosine similarity, not probability or confidence,
+and is not clamped. Formal semantic evaluation comes later in Step 12.3.
+
+Normal tests use injected fakes without loading MiniLM. The optional smoke test
+uses real MiniLM with temporary Chroma storage, never the development index:
+
+```powershell
+# From backend/
+$env:RUN_SEMANTIC_RETRIEVER_INTEGRATION="1"
+.\venv\Scripts\python.exe -m pytest tests/test_semantic_retriever_integration.py -v
+Remove-Item Env:RUN_SEMANTIC_RETRIEVER_INTEGRATION
+```
+
+The smoke test checks execution, ranked result structure, and source attribution;
+it does not establish semantic retrieval quality.
