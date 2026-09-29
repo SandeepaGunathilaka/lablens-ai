@@ -1,0 +1,414 @@
+{
+  "dataset_version": "1.0",
+  "description": "Fixed functional evaluation of exact canonical and approved-alias retrieval, supported formatting normalization, and safe rejection.",
+  "queries": [
+    {
+      "id": "canonical_hemoglobin",
+      "query": "Hemoglobin",
+      "category": "canonical",
+      "expected_document_id": "hemoglobin"
+    },
+    {
+      "id": "alias_hemoglobin_1",
+      "query": "Hb",
+      "category": "alias",
+      "expected_document_id": "hemoglobin"
+    },
+    {
+      "id": "alias_hemoglobin_2",
+      "query": "Hgb",
+      "category": "alias",
+      "expected_document_id": "hemoglobin"
+    },
+    {
+      "id": "alias_hemoglobin_3",
+      "query": "Haemoglobin",
+      "category": "alias",
+      "expected_document_id": "hemoglobin"
+    },
+    {
+      "id": "normalized_hemoglobin_1",
+      "query": "  HEMOGLOBIN  ",
+      "category": "normalized_variant",
+      "expected_document_id": "hemoglobin"
+    },
+    {
+      "id": "normalized_hemoglobin_2",
+      "query": "hb",
+      "category": "normalized_variant",
+      "expected_document_id": "hemoglobin"
+    },
+    {
+      "id": "normalized_hemoglobin_3",
+      "query": " HGB ",
+      "category": "normalized_variant",
+      "expected_document_id": "hemoglobin"
+    },
+    {
+      "id": "canonical_wbc",
+      "query": "WBC",
+      "category": "canonical",
+      "expected_document_id": "wbc"
+    },
+    {
+      "id": "alias_wbc_1",
+      "query": "White Blood Cell",
+      "category": "alias",
+      "expected_document_id": "wbc"
+    },
+    {
+      "id": "alias_wbc_2",
+      "query": "White Blood Cells",
+      "category": "alias",
+      "expected_document_id": "wbc"
+    },
+    {
+      "id": "alias_wbc_3",
+      "query": "White Blood Cell Count",
+      "category": "alias",
+      "expected_document_id": "wbc"
+    },
+    {
+      "id": "alias_wbc_4",
+      "query": "White Cell Count",
+      "category": "alias",
+      "expected_document_id": "wbc"
+    },
+    {
+      "id": "alias_wbc_5",
+      "query": "Leukocyte Count",
+      "category": "alias",
+      "expected_document_id": "wbc"
+    },
+    {
+      "id": "normalized_wbc_1",
+      "query": "wbc",
+      "category": "normalized_variant",
+      "expected_document_id": "wbc"
+    },
+    {
+      "id": "normalized_wbc_2",
+      "query": "white   blood cell count",
+      "category": "normalized_variant",
+      "expected_document_id": "wbc"
+    },
+    {
+      "id": "normalized_wbc_3",
+      "query": " White\tCell Count ",
+      "category": "normalized_variant",
+      "expected_document_id": "wbc"
+    },
+    {
+      "id": "canonical_platelets",
+      "query": "Platelets",
+      "category": "canonical",
+      "expected_document_id": "platelets"
+    },
+    {
+      "id": "alias_platelets_1",
+      "query": "Platelet",
+      "category": "alias",
+      "expected_document_id": "platelets"
+    },
+    {
+      "id": "alias_platelets_2",
+      "query": "Platelet Count",
+      "category": "alias",
+      "expected_document_id": "platelets"
+    },
+    {
+      "id": "alias_platelets_3",
+      "query": "PLT",
+      "category": "alias",
+      "expected_document_id": "platelets"
+    },
+    {
+      "id": "alias_platelets_4",
+      "query": "Thrombocyte Count",
+      "category": "alias",
+      "expected_document_id": "platelets"
+    },
+    {
+      "id": "normalized_platelets_1",
+      "query": "PLATELETS",
+      "category": "normalized_variant",
+      "expected_document_id": "platelets"
+    },
+    {
+      "id": "normalized_platelets_2",
+      "query": " platelet   count ",
+      "category": "normalized_variant",
+      "expected_document_id": "platelets"
+    },
+    {
+      "id": "normalized_platelets_3",
+      "query": "thrombocyte-count",
+      "category": "normalized_variant",
+      "expected_document_id": "platelets"
+    },
+    {
+      "id": "canonical_hdl",
+      "query": "HDL",
+      "category": "canonical",
+      "expected_document_id": "hdl"
+    },
+    {
+      "id": "alias_hdl_1",
+      "query": "HDL Cholesterol",
+      "category": "alias",
+      "expected_document_id": "hdl"
+    },
+    {
+      "id": "alias_hdl_2",
+      "query": "HDL-C",
+      "category": "alias",
+      "expected_document_id": "hdl"
+    },
+    {
+      "id": "alias_hdl_3",
+      "query": "High-Density Lipoprotein Cholesterol",
+      "category": "alias",
+      "expected_document_id": "hdl"
+    },
+    {
+      "id": "alias_hdl_4",
+      "query": "High-Density Lipoprotein",
+      "category": "alias",
+      "expected_document_id": "hdl"
+    },
+    {
+      "id": "normalized_hdl_1",
+      "query": "hdl – c",
+      "category": "normalized_variant",
+      "expected_document_id": "hdl"
+    },
+    {
+      "id": "normalized_hdl_2",
+      "query": "HDL—C",
+      "category": "normalized_variant",
+      "expected_document_id": "hdl"
+    },
+    {
+      "id": "normalized_hdl_3",
+      "query": "High‑Density Lipoprotein",
+      "category": "normalized_variant",
+      "expected_document_id": "hdl"
+    },
+    {
+      "id": "canonical_ldl",
+      "query": "LDL",
+      "category": "canonical",
+      "expected_document_id": "ldl"
+    },
+    {
+      "id": "alias_ldl_1",
+      "query": "LDL Cholesterol",
+      "category": "alias",
+      "expected_document_id": "ldl"
+    },
+    {
+      "id": "alias_ldl_2",
+      "query": "LDL-C",
+      "category": "alias",
+      "expected_document_id": "ldl"
+    },
+    {
+      "id": "alias_ldl_3",
+      "query": "Low-Density Lipoprotein Cholesterol",
+      "category": "alias",
+      "expected_document_id": "ldl"
+    },
+    {
+      "id": "alias_ldl_4",
+      "query": "Low-Density Lipoprotein",
+      "category": "alias",
+      "expected_document_id": "ldl"
+    },
+    {
+      "id": "normalized_ldl_1",
+      "query": " ldl ",
+      "category": "normalized_variant",
+      "expected_document_id": "ldl"
+    },
+    {
+      "id": "normalized_ldl_2",
+      "query": "LDL - C",
+      "category": "normalized_variant",
+      "expected_document_id": "ldl"
+    },
+    {
+      "id": "normalized_ldl_3",
+      "query": "low   density lipoprotein",
+      "category": "normalized_variant",
+      "expected_document_id": "ldl"
+    },
+    {
+      "id": "canonical_triglycerides",
+      "query": "Triglycerides",
+      "category": "canonical",
+      "expected_document_id": "triglycerides"
+    },
+    {
+      "id": "alias_triglycerides_1",
+      "query": "Triglyceride",
+      "category": "alias",
+      "expected_document_id": "triglycerides"
+    },
+    {
+      "id": "alias_triglycerides_2",
+      "query": "TG",
+      "category": "alias",
+      "expected_document_id": "triglycerides"
+    },
+    {
+      "id": "alias_triglycerides_3",
+      "query": "TRIG",
+      "category": "alias",
+      "expected_document_id": "triglycerides"
+    },
+    {
+      "id": "normalized_triglycerides_1",
+      "query": "TRIGLYCERIDES",
+      "category": "normalized_variant",
+      "expected_document_id": "triglycerides"
+    },
+    {
+      "id": "normalized_triglycerides_2",
+      "query": " tg ",
+      "category": "normalized_variant",
+      "expected_document_id": "triglycerides"
+    },
+    {
+      "id": "normalized_triglycerides_3",
+      "query": "trig",
+      "category": "normalized_variant",
+      "expected_document_id": "triglycerides"
+    },
+    {
+      "id": "canonical_total_cholesterol",
+      "query": "Total Cholesterol",
+      "category": "canonical",
+      "expected_document_id": "total_cholesterol"
+    },
+    {
+      "id": "alias_total_cholesterol_1",
+      "query": "Cholesterol Total",
+      "category": "alias",
+      "expected_document_id": "total_cholesterol"
+    },
+    {
+      "id": "alias_total_cholesterol_2",
+      "query": "Total Chol",
+      "category": "alias",
+      "expected_document_id": "total_cholesterol"
+    },
+    {
+      "id": "alias_total_cholesterol_3",
+      "query": "TC",
+      "category": "alias",
+      "expected_document_id": "total_cholesterol"
+    },
+    {
+      "id": "normalized_total_cholesterol_1",
+      "query": "TOTAL CHOLESTEROL",
+      "category": "normalized_variant",
+      "expected_document_id": "total_cholesterol"
+    },
+    {
+      "id": "normalized_total_cholesterol_2",
+      "query": " Cholesterol   Total ",
+      "category": "normalized_variant",
+      "expected_document_id": "total_cholesterol"
+    },
+    {
+      "id": "normalized_total_cholesterol_3",
+      "query": "total-chol",
+      "category": "normalized_variant",
+      "expected_document_id": "total_cholesterol"
+    },
+    {
+      "id": "unsupported_1",
+      "query": "Cholesterol",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_2",
+      "query": "Blood Cell Count",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_3",
+      "query": "HDL Cholesterol result",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_4",
+      "query": "Hemoglob",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_5",
+      "query": "Glucose",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_6",
+      "query": "Creatinine",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_7",
+      "query": "Sodium",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_8",
+      "query": "Vitamin D",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_9",
+      "query": "",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_10",
+      "query": "   ",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_11",
+      "query": "LDL Cholesterol result",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_12",
+      "query": "Triglycer",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_13",
+      "query": "Hemogolbin",
+      "category": "unsupported",
+      "expected_document_id": null
+    },
+    {
+      "id": "unsupported_14",
+      "query": "Potassium",
+      "category": "unsupported",
+      "expected_document_id": null
+    }
+  ]
+}
