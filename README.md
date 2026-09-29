@@ -222,7 +222,7 @@ freshness, including normalization and embedding-text version; the semantic laye
 also checks each recovered document fingerprint. Errors propagate without an
 automatic rebuild. Returned documents are isolated copies of curated KB records.
 
-The search() method remains ranked search only. The retrieve() method applies the frozen policy documented below; hybrid retrieval is not implemented.
+The search() method remains ranked search only. The retrieve() method applies the frozen policy documented below; keyword-first composition is documented in Step 13 below.
 `similarity = 1 - distance` is cosine similarity, not probability or confidence,
 and is not clamped. Formal semantic evaluation comes later in Step 12.3.
 
@@ -296,5 +296,24 @@ The policy is intentionally conservative; these figures do not mean 100% semanti
 retrieval accuracy. Similarity is not a probability or confidence score.
 
 Retrieval does not write query text, vectors, decisions, patient identifiers, or
-history. It never rebuilds Chroma. Keyword-plus-semantic hybrid retrieval is not
-implemented.
+history. It never rebuilds Chroma. Keyword-first hybrid retrieval composes this frozen policy as documented below.
+
+## Keyword-first hybrid retrieval (Member 2 Step 13)
+
+`HybridRetriever(keyword_retriever=None, semantic_retriever=None).retrieve(query)`
+tries the existing exact canonical/approved-alias matcher first. An exact match
+returns immediately with `method="keyword"`; semantic retrieval is not called or
+reranked against it. This preserves deterministic approved vocabulary behavior.
+The default semantic component is constructed only after a keyword miss.
+
+A miss calls `SemanticRetriever.retrieve()` with its unchanged frozen policy.
+Acceptance returns `method="semantic"`; insufficient evidence returns
+`found=False`, `document=None`, and `method="none"`. Semantic decisions are retained
+for inspection. Scores are never combined, and similarity is not confidence.
+
+`HybridRetrievalResult` is a frozen dataclass containing `document`, `found`,
+`method`, and `semantic_decision`. Non-string or blank queries raise `ValueError`.
+Other query text is forwarded unchanged; existing components own normalization.
+Infrastructure and integrity exceptions propagate instead of becoming no-match.
+The component stores no query history and performs no Chroma writes or rebuilds.
+No runtime calibration or RetrievalRequest/RetrievalResponse orchestration is added.
