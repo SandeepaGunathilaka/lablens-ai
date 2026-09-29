@@ -33,16 +33,20 @@ CLEAN_BODY = (
 CLEAN_DRAFT = f"{CLEAN_BODY}\n\n{DISCLAIMER}"
 
 
-def validate(client, draft, original_result=ORIGINAL_RESULT):
-    payload = {
+def safety_payload(draft, original_result=ORIGINAL_RESULT, user_id="user-1"):
+    return {
         "task_id": "task-1",
         "report_id": "report-1",
-        "user_id": "user-1",
+        "user_id": user_id,
         "original_result": original_result,
         "retrieved_sources": RETRIEVED_SOURCES,
         "draft_response": draft,
     }
-    response = client.post("/agents/safety/validate", json=payload)
+
+
+def validate(client, auth_headers, draft, original_result=ORIGINAL_RESULT):
+    payload = safety_payload(draft, original_result)
+    response = client.post("/agents/safety/validate", json=payload, headers=auth_headers("user-1"))
     assert response.status_code == 200
     return response.json()
 
@@ -50,8 +54,8 @@ def validate(client, draft, original_result=ORIGINAL_RESULT):
 # --- Endpoint: one test per required scenario ------------------------------------
 
 
-def test_clean_draft_with_disclaimer_is_approved(client):
-    body = validate(client, CLEAN_DRAFT)
+def test_clean_draft_with_disclaimer_is_approved(client, auth_headers):
+    body = validate(client, auth_headers, CLEAN_DRAFT)
 
     assert body == {
         "approved": True,
@@ -80,8 +84,8 @@ def test_clean_draft_with_disclaimer_is_approved(client):
     ],
     ids=["diagnosis", "medication", "wrong-value", "missing-disclaimer", "unsupported-claim"],
 )
-def test_unsafe_draft_is_rejected(client, draft, reason):
-    assert validate(client, draft) == {"approved": False, "reason": reason, "action": "regenerate"}
+def test_unsafe_draft_is_rejected(client, auth_headers, draft, reason):
+    assert validate(client, auth_headers, draft) == {"approved": False, "reason": reason, "action": "regenerate"}
 
 
 # --- check_values -----------------------------------------------------------------
@@ -219,10 +223,10 @@ def test_document_agent_payload_has_expected_shape():
     }
 
 
-def test_document_agent_result_with_nulls_is_approved(client):
+def test_document_agent_result_with_nulls_is_approved(client, auth_headers):
     draft = f"Your hemoglobin is 11.2 g/dL. Hemoglobin is a protein in red blood cells. {DISCLAIMER}"
 
-    body = validate(client, draft, original_result=DOCUMENT_AGENT_RESULT)
+    body = validate(client, auth_headers, draft, original_result=DOCUMENT_AGENT_RESULT)
 
     assert body["approved"] is True
     assert body["checks"]["patient_values_verified"] is True
@@ -236,8 +240,8 @@ def test_document_agent_result_with_nulls_is_approved(client):
     ],
     ids=["wrong-value", "medication"],
 )
-def test_document_agent_result_with_nulls_is_rejected(client, draft, reason):
-    body = validate(client, draft, original_result=DOCUMENT_AGENT_RESULT)
+def test_document_agent_result_with_nulls_is_rejected(client, auth_headers, draft, reason):
+    body = validate(client, auth_headers, draft, original_result=DOCUMENT_AGENT_RESULT)
 
     assert body == {"approved": False, "reason": reason, "action": "regenerate"}
 
