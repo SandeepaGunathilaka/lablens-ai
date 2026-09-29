@@ -316,7 +316,7 @@ for inspection. Scores are never combined, and similarity is not confidence.
 Other query text is forwarded unchanged; existing components own normalization.
 Infrastructure and integrity exceptions propagate instead of becoming no-match.
 The component stores no query history and performs no Chroma writes or rebuilds.
-No runtime calibration or RetrievalRequest/RetrievalResponse orchestration is added.
+No runtime calibration is added. Request/response orchestration is described below.
 
 ## End-to-end hybrid evaluation (Member 2 Steps 14 & 14.2)
 
@@ -367,3 +367,46 @@ The CLI verifies frozen fixture/KB hashes before execution and checks them again
   - 12 semantic fallbacks attempted:
     - 2 semantic accepts: `unsupported_4` ('Hemoglob' -> hemoglobin, similarity 0.5431, margin 0.3907) and `unsupported_12` ('Triglycer' -> triglycerides, similarity 0.4863, margin 0.2877). These truncated stems clear semantic threshold margins but were rejected by exact keyword rules.
     - 10 semantic abstentions.
+
+## Medical Retrieval Agent (Member 2 Step 15)
+
+`MedicalRetrievalAgent(hybrid_retriever=None).retrieve(request: RetrievalRequest)`
+returns the existing `RetrievalResponse` contract:
+
+```text
+MedicalRetrievalAgent -> HybridRetriever -> keyword first
+                                        -> semantic fallback
+                                        -> abstention
+```
+
+The Retrieval Agent returns curated evidence and provenance. It does not diagnose
+or produce final patient-facing explanations. It calls the hybrid retriever once
+per requested test, preserving request order, duplicate entries, and the exact
+`task_id`, `report_id`, and `user_id`. A single query uses a one-element
+`test_names` list. No request or response schema changes were needed.
+
+Each success has one match. Its `information` contains labeled, verbatim curated
+canonical test name, document title, definition, what it measures, general
+information, source publisher, and source accessed date. The existing structured
+source carries the original source title and URL. Publisher and accessed date
+are passage text because the source contract has no dedicated fields for them.
+The result's `test_name` preserves the requested name/query, including aliases.
+Aliases are not copied from the knowledge document. The public contract has no
+retrieval-method field, so method and internal semantic scores are not exported;
+similarity is never presented as confidence.
+
+Abstention is explicitly `found=False, matches=[]`, meaning no reliable curated
+information was retrieved. Rejected semantic candidates never become evidence.
+Validation, model, missing/stale-index and KB/integrity failures propagate to the
+caller instead of becoming not-found. An infrastructure failure aborts the call;
+ordinary abstentions leave the other successful items intact.
+
+The agent performs no persistence, keeps no request history, and adds no LLM,
+patient-value interpretation, REST routes, or Coordinator integration. Hybrid
+retrieval, the frozen thresholds, the KB, and Chroma remain unchanged. Offline
+agent tests inject a mock hybrid retriever and need no MiniLM or Chroma:
+
+```powershell
+cd backend
+.\venv\Scripts\python.exe -m pytest tests/test_retrieval_agent.py
+```
