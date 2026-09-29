@@ -160,3 +160,50 @@ cd backend
 
 cd frontend
 npm run dev
+
+## Curated knowledge vector index (Member 2)
+
+ChromaDB 1.5.9 stores only the seven static curated knowledge documents, their
+indexing text, source attribution, explicitly supplied embeddings, and build
+provenance. Never put patient data, uploaded reports, identifiers, explanations,
+or query history into this collection. Query vectors are transient.
+
+`CHROMA_PERSIST_DIRECTORY=data/chroma` resolves against `backend/`, independently
+of the terminal directory. Absolute paths are also supported.
+`CHROMA_COLLECTION_NAME=lablens_medical_kb_v1` selects the collection. The generated
+`backend/data/chroma/` directory is ignored by Git; the curated JSON remains tracked.
+
+From `backend/`, after installing requirements:
+
+```powershell
+.\venv\Scripts\python.exe -m agents.build_vector_index
+.\venv\Scripts\python.exe -m agents.build_vector_index --rebuild
+```
+
+The first command builds a missing index, leaves a valid index unchanged without
+loading the model, and rejects a stale index with instructions to rebuild. Building
+uses the configured EmbeddingService and may download its model unless cached or
+local-files-only mode is enabled. The default model produces 384-dimensional
+normalized vectors. Chroma has no automatic embedding function and uses the 1.5.9
+`configuration={"hnsw": {"space": "cosine"}}` API.
+
+Preparation completes before replacing the configured collection; unrelated
+collections remain intact. Replacement is not transactional. A failed insertion
+leaves an incomplete index that requires an explicit rebuild. Freshness checks
+compare the raw-file KB fingerprint, model/revision, dimension, normalization,
+embedding-text version, actual cosine configuration, seven IDs, count, and stored
+text/source metadata. Queries never build automatically. An empty compatible
+collection returns no candidates; strict build validation still rejects it.
+
+Normal tests use fake vectors in temporary directories and do not load MiniLM.
+The optional integration test loads the real model, uses only pytest temporary
+persistence, and verifies document-vector self-retrieval, not semantic quality:
+
+```powershell
+$env:RUN_VECTOR_STORE_INTEGRATION="1"
+.\venv\Scripts\python.exe -m pytest tests/test_vector_store_integration.py -v
+Remove-Item Env:RUN_VECTOR_STORE_INTEGRATION
+```
+
+This component returns nearest vector candidates only. It does not implement a
+SemanticRetriever, relevance thresholds, or patient explanations.

@@ -237,3 +237,6 @@ build/
 
 # Generated retrieval evaluation reports
 /backend/evaluation_results/
+
+# Generated curated knowledge vector index
+/backend/data/chroma/

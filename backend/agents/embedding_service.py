@@ -12,6 +12,7 @@ from agents.knowledge_base import KnowledgeDocument
 
 
 DEFAULT_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_TEXT_VERSION = "1"
 
 
 class Encoder(Protocol):

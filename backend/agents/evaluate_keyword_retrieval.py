@@ -13,12 +13,12 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 
 from agents.knowledge_base import KNOWLEDGE_BASE_DIR, KnowledgeBaseLoader
 from agents.keyword_retriever import KeywordRetriever
+from agents.knowledge_base_fingerprint import DOCUMENT_IDS, knowledge_base_sha256
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 DATASET_PATH = BACKEND_DIR / "tests" / "fixtures" / "retrieval" / "keyword_queries.json"
 REPORT_PATH = BACKEND_DIR / "evaluation_results" / "keyword_baseline.json"
-DOCUMENT_IDS = ("hemoglobin", "wbc", "platelets", "hdl", "ldl", "triglycerides", "total_cholesterol")
 CATEGORY_COUNTS = {"canonical": 7, "alias": 26, "normalized_variant": 21, "unsupported": 14}
 NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -132,19 +132,6 @@ def calculate_metrics(results: list[dict]) -> dict:
 
 def dataset_sha256(path: Path | str = DATASET_PATH) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-
-
-def knowledge_base_sha256(directory: Path | str = KNOWLEDGE_BASE_DIR) -> str:
-    directory = Path(directory)
-    paths = sorted(directory.glob("*.json"), key=lambda path: path.name)
-    if {path.name for path in paths} != {f"{identifier}.json" for identifier in DOCUMENT_IDS}:
-        raise ValueError("KB hashing requires exactly the seven approved JSON filenames")
-    digest = hashlib.sha256()
-    for path in paths:
-        for data in (path.name.encode("utf-8"), path.read_bytes()):
-            digest.update(len(data).to_bytes(8, "big"))
-            digest.update(data)
-    return digest.hexdigest()
 
 
 def git_revision() -> str | None:
