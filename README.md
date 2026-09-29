@@ -410,3 +410,41 @@ agent tests inject a mock hybrid retriever and need no MiniLM or Chroma:
 cd backend
 .\venv\Scripts\python.exe -m pytest tests/test_retrieval_agent.py
 ```
+
+## Medical Retrieval API (Member 2 Step 16)
+
+`POST /api/retrieval` uses the existing `RetrievalRequest` body and returns
+`RetrievalResponse` directly, without an envelope:
+
+```text
+Medical Retrieval API -> MedicalRetrievalAgent -> HybridRetriever
+```
+
+The FastAPI `Depends(get_retrieval_agent)` provider lazily constructs and caches
+one agent for reuse per process. Importing the router does not load MiniLM or
+Chroma; semantic dependencies remain deferred until a keyword miss. The route
+calls `agent.retrieve(request)` once and adds no retrieval logic or persistence.
+
+Minimal request:
+
+```json
+{"task_id":"task-1","report_id":"report-1","user_id":"user-1","test_names":["unsupported test"]}
+```
+
+If retrieval completes with insufficient evidence, the HTTP 200 response is:
+
+```json
+{"task_id":"task-1","report_id":"report-1","user_id":"user-1","results":[{"test_name":"unsupported test","found":false,"matches":[]}]}
+```
+
+Successful results contain the agent's curated passages and source title/URL.
+Identifiers, order, and duplicates are preserved. Mixed success and abstention
+also return HTTP 200. Invalid request bodies use FastAPI's standard HTTP 422.
+Infrastructure failures propagate to the existing non-debug server error handler,
+which returns HTTP 500 with the generic text `Internal Server Error`, without
+exception details or filesystem paths. No new exception handler or sensitive
+retrieval logging is added. A missing index is a system failure, not abstention.
+
+The generated `/docs` and `/openapi.json` expose the existing request/response
+schemas. This endpoint returns evidence only, with no diagnosis, patient
+interpretation, LLM calls, or Coordinator integration.

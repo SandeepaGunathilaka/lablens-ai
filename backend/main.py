@@ -8,6 +8,7 @@ from pymongo.errors import PyMongoError
 from agents.document_agent import router as document_agent_router
 from agents.safety_agent import router as safety_agent_router
 from api.audit import router as audit_router
+from api.retrieval import router as retrieval_router
 from database import get_audit_logs_collection, get_users_collection
 from logging_service import ensure_audit_log_indexes
 from security.auth import ensure_user_indexes, router as auth_router
@@ -39,6 +40,7 @@ app.include_router(auth_router)
 app.include_router(document_agent_router)
 app.include_router(safety_agent_router)
 app.include_router(audit_router)
+app.include_router(retrieval_router)
 
 
 @app.get("/")
