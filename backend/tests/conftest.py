@@ -11,6 +11,7 @@ from database import get_audit_logs_collection, get_users_collection  # noqa: E4
 from logging_service import ensure_audit_log_indexes  # noqa: E402
 from main import app  # noqa: E402
 from security.auth import ensure_user_indexes  # noqa: E402
+from security.tokens import create_access_token  # noqa: E402
 
 
 @pytest.fixture
@@ -27,6 +28,16 @@ def audit_logs():
     collection = mongomock.MongoClient().db.audit_logs
     ensure_audit_log_indexes(collection)
     return collection
+
+
+@pytest.fixture
+def auth_headers():
+    """Build an Authorization header with a valid token: auth_headers("user-1")."""
+
+    def make(user_id: str) -> dict[str, str]:
+        return {"Authorization": f"Bearer {create_access_token(user_id)}"}
+
+    return make
 
 
 @pytest.fixture
