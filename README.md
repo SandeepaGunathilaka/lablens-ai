@@ -491,3 +491,10 @@ retrieval logging is added. A missing index is a system failure, not abstention.
 The generated `/docs` and `/openapi.json` expose the existing request/response
 schemas. This endpoint returns evidence only, with no diagnosis, patient
 interpretation, LLM calls, or Coordinator integration.
+
+The historical semantic fingerprint above used mixed line endings (CRLF within the
+file, final LF). Its byte-equivalent canonical LF fixture is now pinned to SHA-256
+`cf799511635cb44add34e8710933142a45a1c717a8f712551f7f42809b1dd0e1`;
+see `backend/tests/fixtures/retrieval/README.md`. Queries, labels, and thresholds
+are unchanged. Held-out reports without calibration reference metrics mark
+comparison statuses as `unavailable` rather than inferring reduced performance.

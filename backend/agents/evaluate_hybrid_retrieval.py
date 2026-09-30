@@ -30,7 +30,7 @@ OUTCOMES = ("correct_keyword_accept", "correct_semantic_accept", "wrong_keyword_
 # Frozen fixture provenance from the preceding keyword/semantic evaluations.
 FROZEN_HASHES = {
     "keyword_dataset_sha256": "ee70d2ffe910cf58010aa5a8f623c1ac00ab09abdc149fc30f16247966a5420a",
-    "semantic_dataset_sha256": "e481c484da856d1488b2bd728cb4c0732b577d4bea23c3a52156271c2f5e890b",
+    "semantic_dataset_sha256": "cf799511635cb44add34e8710933142a45a1c717a8f712551f7f42809b1dd0e1",
     "kb_sha256": "f704ff3d180124a90638695413f594531e7609e0a0902257dcd36b10a7c4bcc4",
 }
 
