@@ -218,6 +218,18 @@ local-files-only mode is enabled. The default model produces 384-dimensional
 normalized vectors. Chroma has no automatic embedding function and uses the 1.5.9
 `configuration={"hnsw": {"space": "cosine"}}` API.
 
+Deployment must explicitly run the build command before serving semantic retrieval;
+application startup does not run it. Build into the configured persistent directory
+as a deployment preparation step, or provision a pre-built index with matching KB
+bytes, embedding model/revision, and index configuration. The runtime also needs
+the embedding model to encode queries. A fresh Git checkout includes neither the
+ignored Chroma index nor the downloaded model cache. Use `--rebuild` explicitly
+when the KB or index configuration changes.
+
+Retrieval benchmark and KB JSON files are pinned to LF in `.gitattributes` because
+provenance checks hash raw bytes. Preserve the frozen hashes when diagnosing
+checkout line-ending differences.
+
 Preparation completes before replacing the configured collection; unrelated
 collections remain intact. Replacement is not transactional. A failed insertion
 leaves an incomplete index that requires an explicit rebuild. Freshness checks
