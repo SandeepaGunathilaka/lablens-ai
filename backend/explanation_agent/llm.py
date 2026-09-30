@@ -2,7 +2,9 @@
 
 import os
 
-from explanation_agent.prompt import SYSTEM_PROMPT
+DEFAULT_MODEL = "gemini-3.8-flash"
+_TIMEOUT_MS = 30_000
+_PLACEHOLDER_KEYS = {"", "your_gemini_api_key_here"}
 
 
 class ExplanationModelError(RuntimeError):
@@ -14,29 +16,32 @@ class ExplanationClient:
         raise NotImplementedError
 
 
-class OpenAIExplanationClient(ExplanationClient):
+class GeminiExplanationClient(ExplanationClient):
     def __init__(self, api_key: str, model: str) -> None:
         self._api_key = api_key
         self._model = model
 
     def complete(self, system_prompt: str, user_prompt: str) -> str:
         try:
-            from openai import OpenAI
+            from google import genai
+            from google.genai import types
         except ImportError as exc:
-            raise ExplanationModelError("The OpenAI client library is not installed.") from exc
+            raise ExplanationModelError("The google-genai client library is not installed.") from exc
 
         try:
-            client = OpenAI(api_key=self._api_key, timeout=30.0)
-            response = client.chat.completions.create(
-                model=self._model,
-                temperature=0.2,
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
+            client = genai.Client(
+                api_key=self._api_key,
+                http_options=types.HttpOptions(timeout=_TIMEOUT_MS),
             )
-            content = response.choices[0].message.content
+            response = client.models.generate_content(
+                model=self._model,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    response_mime_type="application/json",
+                ),
+            )
+            content = response.text
         except Exception as exc:
             raise ExplanationModelError("The explanation model request failed.") from exc
 
@@ -52,16 +57,9 @@ class TemplateExplanationClient(ExplanationClient):
         raise ExplanationModelError("The template provider does not call a model.")
 
 
-def system_prompt() -> str:
-    return SYSTEM_PROMPT
-
-
-def build_openai_client_from_env() -> OpenAIExplanationClient | None:
-    provider = os.getenv("EXPLANATION_PROVIDER", "openai").strip().lower()
-    if provider == "template":
+def build_gemini_client_from_env() -> GeminiExplanationClient | None:
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if api_key in _PLACEHOLDER_KEYS:
         return None
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not api_key or api_key == "your_openai_api_key_here":
-        return None
-    model = os.getenv("EXPLANATION_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
-    return OpenAIExplanationClient(api_key=api_key, model=model)
+    model = os.getenv("EXPLANATION_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+    return GeminiExplanationClient(api_key=api_key, model=model)

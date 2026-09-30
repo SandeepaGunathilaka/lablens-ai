@@ -130,7 +130,7 @@ backend/
     test_document_agent.py
     test_safety_agent.py
     test_explanation_service.py
-    test_status.py
+    test_explanation_api.py
   main.py
   requirements.txt
 frontend/
@@ -139,26 +139,33 @@ frontend/
 
 ## Explanation Agent
 
-`POST /explanation` turns one lab result into four educational fields. It does not assign a personal condition, recommend medication, or change the recorded value.
+Turns each lab finding into four educational fields (`what_it_measures`, `explanation`, `possible_meaning`, `recommended_discussion`). It does not assign a personal condition, recommend medication, change the recorded value, or choose the status.
 
-The Coordinator should calculate status with `calculate_status` and pass it in. If `status` is omitted, the agent uses that same function. A missing or unreadable reference range stays `unknown`.
+The Coordinator calls it in-process:
 
 ```python
-from explanation_agent import calculate_status, build_draft_response, ExplanationRequest
+from explanation_agent import ExplanationRequest, build_explanation_service
+
+response = build_explanation_service().explain(ExplanationRequest(
+    task_id=task_id, report_id=report_id, user_id=user_id,
+    findings=[f.model_dump() for f in findings],   # test, value, unit, reference_range, status
+    retrieved_sources=retrieved_sources,           # the same list sent to the Safety Agent
+    rejection_feedback=[instruction] if instruction else [],
+))
 ```
 
-`build_draft_response` joins `what_it_measures`, `explanation`, `possible_meaning`, and `recommended_discussion`, then appends the standard disclaimer once. Send that string to the Safety Agent. Do not append the disclaimer again.
+- `findings` use the Document Agent's field names. `status` is the one the Coordinator computed in code; `None` is stated as "no status could be determined", never guessed.
+- `retrieved_sources` are the Safety Agent's `RetrievedSource` entries. Each finding is explained only from entries with a matching `test_name` and at least one titled source; otherwise it gets an insufficient-information response and the model is not called.
+- The response has one `ExplainedFinding` per input finding plus `safety_notes` (internal, never shown to the patient). The Coordinator joins the fields and appends the Safety Agent's `DISCLAIMER`.
 
-Optional `retrieved_sources` carries Retrieval Agent citations (`title`, `excerpt`, optional `url` and `source_id`). The prompt may use only those sources. With no usable source, the agent says there is not enough reliable information.
-
-Regeneration: send `rejection_feedback` and, when you have it, `previous_draft`. The response sets `regenerated` to true.
+`POST /explanation` exposes the same contract over HTTP. It requires a bearer token, returns 403 when `user_id` is not the caller, and writes one `explanation_agent` / `explain` entry to the audit log.
 
 | Environment variable | Purpose |
 |---|---|
-| `EXPLANATION_PROVIDER` | `openai` (default) or `template` for a local source-only preview |
-| `EXPLANATION_MODEL` | OpenAI model name, default `gpt-4o-mini` |
-| `OPENAI_API_KEY` | Required for `openai`. If it is missing, the agent returns `generation_mode: unavailable` and does not invent an explanation |
-| `EXPLANATION_RATE_LIMIT` | Requests per minute per client. `0` disables the limit |
+| `EXPLANATION_PROVIDER` | `gemini` (default) or `template` for a local source-only preview |
+| `EXPLANATION_MODEL` | Gemini model name, default `gemini-3.8-flash` |
+| `GEMINI_API_KEY` | Required for `gemini` (create one in Google AI Studio). If it is missing, the agent returns `generation_mode: unavailable` and does not invent an explanation |
+| `EXPLANATION_RATE_LIMIT` | Requests per minute per user. `0` disables the limit |
 
 ```bash
 cd backend

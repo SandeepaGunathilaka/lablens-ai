@@ -1,40 +1,34 @@
 import { useState } from 'react'
 
+// The dev proxy strips the first /api; the retrieval router itself is mounted at /api/retrieval.
+const RETRIEVAL_URL = '/api/api/retrieval'
+const EXPLANATION_URL = '/api/explanation'
+const LOGIN_URL = '/api/auth/login'
+
 const EMPTY_FORM = {
-  testName: 'Hemoglobin',
+  test: 'Hemoglobin',
   value: '10.2',
   unit: 'g/dL',
   referenceRange: '12.0-15.5',
-  status: 'auto',
-  sourceTitle: '',
-  sourceExcerpt: '',
-  sourceUrl: '',
+  status: 'low',
   userQuestion: '',
-  rejectionFeedback: '',
 }
 
 const PRESETS = [
-  { label: 'Hemoglobin', testName: 'Hemoglobin', value: '10.2', unit: 'g/dL', referenceRange: '12.0-15.5' },
-  { label: 'WBC', testName: 'WBC', value: '7.0', unit: 'x10^9/L', referenceRange: '4.0-11.0' },
-  { label: 'Platelets', testName: 'Platelets', value: '450', unit: 'x10^9/L', referenceRange: '150-450' },
-  { label: 'HDL', testName: 'HDL', value: '35', unit: 'mg/dL', referenceRange: '>=40' },
-  { label: 'LDL', testName: 'LDL', value: '160', unit: 'mg/dL', referenceRange: '<100' },
-  { label: 'Triglycerides', testName: 'Triglycerides', value: '140', unit: 'mg/dL', referenceRange: '<150' },
-  { label: 'Total Cholesterol', testName: 'Total Cholesterol', value: '180', unit: 'mg/dL', referenceRange: '<200' },
-  { label: 'Missing range', testName: 'Hemoglobin', value: '13.4', unit: 'g/dL', referenceRange: '' },
-  { label: 'Unreadable range', testName: 'Hemoglobin', value: '13.4', unit: 'g/dL', referenceRange: 'see note' },
+  { label: 'Hemoglobin', test: 'Hemoglobin', value: '10.2', unit: 'g/dL', referenceRange: '12.0-15.5', status: 'low' },
+  { label: 'WBC', test: 'WBC', value: '7.0', unit: 'x10^9/L', referenceRange: '4.0-11.0', status: 'normal' },
+  { label: 'Platelets', test: 'Platelets', value: '450', unit: 'x10^9/L', referenceRange: '150-450', status: 'normal' },
+  { label: 'HDL', test: 'HDL', value: '35', unit: 'mg/dL', referenceRange: '>=40', status: 'low' },
+  { label: 'LDL', test: 'LDL', value: '160', unit: 'mg/dL', referenceRange: '<100', status: 'high' },
+  { label: 'Triglycerides', test: 'Triglycerides', value: '140', unit: 'mg/dL', referenceRange: '<150', status: 'normal' },
+  { label: 'Total Cholesterol', test: 'Total Cholesterol', value: '180', unit: 'mg/dL', referenceRange: '<200', status: 'normal' },
+  { label: 'Missing range', test: 'Hemoglobin', value: '13.4', unit: 'g/dL', referenceRange: '', status: '' },
+  { label: 'Not in knowledge base', test: 'Ferritin', value: '40', unit: 'ng/mL', referenceRange: '20-250', status: 'normal' },
 ]
 
-const SAMPLE_SOURCE = {
-  sourceTitle: 'Sample hemoglobin note',
-  sourceExcerpt:
-    'Hemoglobin is a protein in red blood cells that carries oxygen. A laboratory report compares the measured amount with a reference range supplied by the lab.',
-  sourceUrl: '',
-}
-
-function formatApiError(data) {
+function formatApiError(data, fallback) {
   if (!data) {
-    return 'The explanation request failed.'
+    return fallback
   }
   if (typeof data.detail === 'string') {
     return data.detail
@@ -49,102 +43,175 @@ function formatApiError(data) {
       })
       .join(' ')
   }
-  return 'The explanation request failed.'
+  return fallback
 }
 
-function bannerCopy(result) {
-  if (result.generation_mode === 'insufficient') {
+async function postJson(url, body, fallbackError, token) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+  const data = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new Error(formatApiError(data, fallbackError))
+  }
+  return data
+}
+
+function userIdFromToken(token) {
+  const payload = token.split('.')[1] || ''
+  const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+  return JSON.parse(json).sub
+}
+
+// Same conversion the Coordinator applies before calling Explanation and Safety.
+function toRetrievedSources(retrieval) {
+  return retrieval.results
+    .filter((result) => result.found)
+    .map((result) => ({
+      test_name: result.test_name,
+      information: { passages: result.matches.map((match) => match.information) },
+      sources: result.matches.flatMap((match) => match.sources),
+    }))
+}
+
+function bannerCopy(finding) {
+  if (finding.generation_mode === 'insufficient') {
     return 'There is not enough reliable source information, so no meaning was inferred.'
   }
-  if (result.generation_mode === 'unavailable') {
+  if (finding.generation_mode === 'unavailable') {
     return 'The explanation model is unavailable. No medical explanation was generated.'
   }
-  if (result.generation_mode === 'safe_fallback') {
+  if (finding.generation_mode === 'safe_fallback') {
     return 'The draft could not be verified against the retrieved sources, so it was replaced with a safe response.'
   }
-  if (result.generation_mode === 'template') {
-    return 'This development preview uses only the retrieved source text you supplied.'
+  if (finding.generation_mode === 'template') {
+    return 'This development preview uses only the retrieved source text.'
   }
-  return 'This explanation uses only the retrieved sources supplied with the result.'
+  return 'This explanation uses only the sources returned by the Retrieval Agent.'
+}
+
+function SignIn({ onSignedIn }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function submit(event) {
+    event.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const data = await postJson(LOGIN_URL, { email, password }, 'Sign-in failed.')
+      onSignedIn({ token: data.access_token, userId: userIdFromToken(data.access_token) })
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to reach the sign-in service.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form className="card" onSubmit={submit}>
+      <h2>Sign in</h2>
+      <p className="card-note">Explanations are only available to signed-in users.</p>
+      <div className="form-grid">
+        <label className="field field-wide">
+          <span>Email</span>
+          <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+        </label>
+        <label className="field field-wide">
+          <span>Password</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+        </label>
+      </div>
+      {error ? <p className="error-text">{error}</p> : null}
+      <div className="actions">
+        <button className="primary" type="submit" disabled={loading}>
+          {loading ? 'Signing in...' : 'Sign in'}
+        </button>
+      </div>
+    </form>
+  )
 }
 
 function ExplanationResults() {
+  const [session, setSession] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
-  const [result, setResult] = useState(null)
+  const [finding, setFinding] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   function updateField(key, value) {
     setForm((current) => ({ ...current, [key]: value }))
-    setResult(null)
+    setFinding(null)
     setError('')
   }
 
   function applyPreset(preset) {
     setForm((current) => ({
       ...current,
-      testName: preset.testName,
+      test: preset.test,
       value: preset.value,
       unit: preset.unit,
       referenceRange: preset.referenceRange,
-      status: 'auto',
+      status: preset.status,
     }))
-    setResult(null)
+    setFinding(null)
     setError('')
   }
 
   async function submitExplanation(event) {
     event.preventDefault()
-    setLoading(true)
-    setError('')
-    setResult(null)
-
-    const payload = {
-      task_id: crypto.randomUUID(),
-      test_name: form.testName.trim(),
-      value: form.value.trim(),
-      unit: form.unit.trim(),
-    }
-    if (form.referenceRange.trim()) {
-      payload.reference_range = form.referenceRange.trim()
-    }
-    if (form.status !== 'auto') {
-      payload.status = form.status
-    }
-    if (form.sourceTitle.trim() && form.sourceExcerpt.trim()) {
-      payload.retrieved_sources = [
-        {
-          title: form.sourceTitle.trim(),
-          excerpt: form.sourceExcerpt.trim(),
-          url: form.sourceUrl.trim() || null,
-        },
-      ]
-    }
-    const hasTitle = Boolean(form.sourceTitle.trim())
-    const hasExcerpt = Boolean(form.sourceExcerpt.trim())
-    if (hasTitle !== hasExcerpt) {
-      setLoading(false)
-      setError('A retrieved source needs both a title and an excerpt.')
+    const value = Number(form.value)
+    if (!Number.isFinite(value)) {
+      setError('Value must be a number.')
       return
     }
-    if (form.userQuestion.trim()) {
-      payload.user_question = form.userQuestion.trim()
+
+    setLoading(true)
+    setError('')
+    setFinding(null)
+
+    const ids = {
+      task_id: crypto.randomUUID(),
+      report_id: crypto.randomUUID(),
+      user_id: session.userId,
     }
-    if (form.rejectionFeedback.trim()) {
-      payload.rejection_feedback = [form.rejectionFeedback.trim()]
-    }
+    const test = form.test.trim()
 
     try {
-      const response = await fetch('/api/explanation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(formatApiError(data))
-      }
-      setResult(data)
+      const retrieval = await postJson(
+        RETRIEVAL_URL,
+        { ...ids, test_names: [test] },
+        'The retrieval request failed.',
+      )
+      const explanation = await postJson(
+        EXPLANATION_URL,
+        {
+          ...ids,
+          findings: [
+            {
+              test,
+              value,
+              unit: form.unit.trim() || null,
+              reference_range: form.referenceRange.trim() || null,
+              status: form.status || null,
+            },
+          ],
+          retrieved_sources: toRetrievedSources(retrieval),
+          user_question: form.userQuestion.trim() || null,
+        },
+        'The explanation request failed.',
+        session.token,
+      )
+      setFinding(explanation.findings[0])
     } catch (requestError) {
       setError(requestError.message || 'Unable to reach the explanation service.')
     } finally {
@@ -152,21 +219,25 @@ function ExplanationResults() {
     }
   }
 
-  const caution = result && result.generation_mode !== 'llm' && result.generation_mode !== 'template'
+  if (!session) {
+    return <SignIn onSignedIn={setSession} />
+  }
+
+  const caution = finding && finding.generation_mode !== 'llm' && finding.generation_mode !== 'template'
 
   return (
     <>
       <p className="intro">
-        Status is calculated from the value and reference range before any explanation is written.
-        The language model does not choose it. Possible meaning stays educational: it does not
+        Sources come from the Retrieval Agent's approved knowledge base. Status is supplied with the
+        result; the language model never chooses it. Possible meaning stays educational: it does not
         assign a personal condition or recommend medication.
       </p>
       <div className="layout">
         <form className="card" onSubmit={submitExplanation}>
           <h2>Lab result</h2>
           <p className="card-note">
-            Use a retrieved source when you have one. With no source, the agent says the information
-            is not enough instead of filling in a medical claim.
+            A test that is not in the knowledge base gets a "not enough reliable information"
+            response instead of an invented explanation.
           </p>
           <div className="presets" aria-label="Sample results">
             {PRESETS.map((preset) => (
@@ -184,27 +255,24 @@ function ExplanationResults() {
             <label className="field">
               <span>Test name</span>
               <input
-                value={form.testName}
-                onChange={(event) => updateField('testName', event.target.value)}
+                value={form.test}
+                onChange={(event) => updateField('test', event.target.value)}
                 required
               />
             </label>
             <label className="field">
-              <span>Status input</span>
-              <select
-                value={form.status}
-                onChange={(event) => updateField('status', event.target.value)}
-              >
-                <option value="auto">Calculate from the range</option>
-                <option value="low">Caller supplied: low</option>
-                <option value="normal">Caller supplied: normal</option>
-                <option value="high">Caller supplied: high</option>
-                <option value="unknown">Caller supplied: unknown</option>
+              <span>Status</span>
+              <select value={form.status} onChange={(event) => updateField('status', event.target.value)}>
+                <option value="low">low</option>
+                <option value="normal">normal</option>
+                <option value="high">high</option>
+                <option value="">could not be determined</option>
               </select>
             </label>
             <label className="field">
               <span>Value</span>
               <input
+                inputMode="decimal"
                 value={form.value}
                 onChange={(event) => updateField('value', event.target.value)}
                 required
@@ -212,11 +280,7 @@ function ExplanationResults() {
             </label>
             <label className="field">
               <span>Unit</span>
-              <input
-                value={form.unit}
-                onChange={(event) => updateField('unit', event.target.value)}
-                required
-              />
+              <input value={form.unit} onChange={(event) => updateField('unit', event.target.value)} />
             </label>
             <label className="field field-wide">
               <span>Reference range</span>
@@ -226,28 +290,6 @@ function ExplanationResults() {
                 placeholder="12.0-15.5, <200, >=40, or leave blank"
               />
             </label>
-            <label className="field">
-              <span>Source title</span>
-              <input
-                value={form.sourceTitle}
-                onChange={(event) => updateField('sourceTitle', event.target.value)}
-              />
-            </label>
-            <label className="field">
-              <span>Source URL</span>
-              <input
-                value={form.sourceUrl}
-                onChange={(event) => updateField('sourceUrl', event.target.value)}
-              />
-            </label>
-            <label className="field field-wide">
-              <span>Retrieved source excerpt</span>
-              <textarea
-                rows="4"
-                value={form.sourceExcerpt}
-                onChange={(event) => updateField('sourceExcerpt', event.target.value)}
-              />
-            </label>
             <label className="field field-wide">
               <span>Follow-up question</span>
               <input
@@ -255,30 +297,13 @@ function ExplanationResults() {
                 onChange={(event) => updateField('userQuestion', event.target.value)}
               />
             </label>
-            <label className="field field-wide">
-              <span>Safety rejection feedback</span>
-              <textarea
-                rows="2"
-                value={form.rejectionFeedback}
-                onChange={(event) => updateField('rejectionFeedback', event.target.value)}
-                placeholder="Optional. Sends this request as a regeneration."
-              />
-            </label>
           </div>
           <div className="actions">
             <button className="primary" type="submit" disabled={loading}>
               {loading ? 'Writing explanation...' : 'Explain result'}
             </button>
-            <button
-              className="secondary"
-              type="button"
-              onClick={() => {
-                setForm((current) => ({ ...current, ...SAMPLE_SOURCE }))
-                setResult(null)
-                setError('')
-              }}
-            >
-              Use sample source
+            <button className="secondary" type="button" onClick={() => setSession(null)}>
+              Sign out
             </button>
           </div>
         </form>
@@ -286,54 +311,52 @@ function ExplanationResults() {
         <section className="card" aria-live="polite">
           <h2>Explanation</h2>
           {error ? <p className="error-text">{error}</p> : null}
-          {!result && !error ? (
+          {!finding && !error ? (
             <p className="empty-result">
               Submit a result to see what it measures, the explanation, a possible meaning, and what
               to discuss with a clinician.
             </p>
           ) : null}
-          {result ? (
+          {finding ? (
             <>
-              <div className={caution ? 'banner banner-caution' : 'banner'}>{bannerCopy(result)}</div>
+              <div className={caution ? 'banner banner-caution' : 'banner'}>{bannerCopy(finding)}</div>
               <div className="result-head">
                 <div>
                   <h3>
-                    {result.test_name} {result.value} {result.unit}
+                    {finding.test_name} {finding.result}
                   </h3>
-                  <p className="status-line">{result.status_detail}</p>
                 </div>
-                <span className={`status-pill status-${result.status}`}>{result.status}</span>
+                <span className={`status-pill status-${finding.status || 'unknown'}`}>
+                  {finding.status || 'unknown'}
+                </span>
               </div>
               <div className="sections">
                 <article className="section">
                   <h3>What it measures</h3>
-                  <p>{result.what_it_measures}</p>
+                  <p>{finding.what_it_measures}</p>
                 </article>
                 <article className="section">
                   <h3>Explanation</h3>
-                  <p>{result.explanation}</p>
+                  <p>{finding.explanation}</p>
                 </article>
                 <article className="section">
                   <h3>Possible meaning</h3>
-                  <p>{result.possible_meaning}</p>
+                  <p>{finding.possible_meaning}</p>
                 </article>
                 <article className="section">
                   <h3>Recommended discussion</h3>
-                  <p>{result.recommended_discussion}</p>
+                  <p>{finding.recommended_discussion}</p>
                 </article>
               </div>
-              {result.sources_used.length > 0 ? (
+              {finding.sources_used.length > 0 ? (
                 <>
                   <h3>Sources used</h3>
                   <ul className="source-list">
-                    {result.sources_used.map((source) => (
+                    {finding.sources_used.map((source) => (
                       <li key={source}>{source}</li>
                     ))}
                   </ul>
                 </>
-              ) : null}
-              {result.regenerated ? (
-                <p className="card-note">This response was treated as a regeneration.</p>
               ) : null}
             </>
           ) : null}
