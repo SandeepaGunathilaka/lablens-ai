@@ -1,7 +1,11 @@
 import pytest
 
 from agents.document_agent import DocumentExtractionError, DocumentExtractionResponse, ExtractedLabResult
-from agents.safety_agent import DISCLAIMER, RetrievedSource, check_disclaimer, validate_draft
+from agents.hybrid_retriever import HybridRetrievalResult
+from agents.knowledge_base import KnowledgeDocument, KnowledgeSource
+from agents.retrieval_agent import MedicalRetrievalAgent
+from agents.retrieval_models import RetrievalResponse
+from agents.safety_agent import DISCLAIMER, check_disclaimer, validate_draft
 from coordinator import (
     EXPLANATION_UNAVAILABLE_MESSAGE,
     FALLBACK_MESSAGE,
@@ -14,6 +18,7 @@ from coordinator import (
     analyze_report,
     build_draft_response,
     compute_status,
+    retrieval_response_to_sources,
 )
 
 HEMOGLOBIN = ExtractedLabResult(
@@ -25,14 +30,26 @@ PLATELETS_UNVERIFIED = ExtractedLabResult(
     confidence=0.5, needs_verification=True,
 )
 
-HEMOGLOBIN_SOURCE = RetrievedSource(
-    test_name="Hemoglobin",
-    information={"description": "Hemoglobin is a protein in red blood cells that carries oxygen."},
-    sources=["https://medlineplus.gov/lab-tests/hemoglobin-test/"],
-)
-
 SAFE_TEXT = "Hemoglobin is a protein in red blood cells that carries oxygen."
 UNSAFE_TEXT = "This means you have anemia."
+
+# A hand-built knowledge-base entry, so tests need no real KB files or vector index.
+HEMOGLOBIN_DOCUMENT = KnowledgeDocument(
+    id="hemoglobin",
+    test_name="Hemoglobin",
+    aliases=["Hgb"],
+    report_type="cbc",
+    title="Hemoglobin test",
+    definition="A blood test.",
+    what_it_measures=SAFE_TEXT,
+    general_information="Results are compared with a reference range.",
+    source=KnowledgeSource(
+        publisher="MedlinePlus",
+        title="Hemoglobin Test",
+        url="https://medlineplus.gov/lab-tests/hemoglobin-test/",
+        accessed_date="2026-09-01",
+    ),
+)
 
 
 # --- Fakes -------------------------------------------------------------------------
@@ -46,10 +63,27 @@ def fake_document(*results, report_type="cbc"):
     return service
 
 
-def fake_retrieval(*sources):
-    def service(test_names):
-        return list(sources)
-    return service
+class FakeHybridRetriever:
+    """Stands in for HybridRetriever (no ChromaDB, no embeddings): finds only the given documents."""
+
+    def __init__(self, *documents, error=None):
+        self.documents = {d.test_name.lower(): d for d in documents}
+        self.error = error
+        self.queries = []
+
+    def retrieve(self, query):
+        self.queries.append(query)
+        if self.error:
+            raise self.error
+        document = self.documents.get(query.lower())
+        if document is None:
+            return HybridRetrievalResult(None, False, "none", None)
+        return HybridRetrievalResult(document, True, "keyword", None)
+
+
+def real_retrieval(*documents, error=None):
+    """The real MedicalRetrievalAgent's retrieve method, backed by a fake hybrid retriever."""
+    return MedicalRetrievalAgent(FakeHybridRetriever(*documents, error=error)).retrieve
 
 
 class FakeExplanation:
@@ -60,7 +94,7 @@ class FakeExplanation:
         self.calls = []
 
     def __call__(self, findings, retrieved_sources, instruction):
-        self.calls.append({"findings": findings, "instruction": instruction})
+        self.calls.append({"findings": findings, "sources": retrieved_sources, "instruction": instruction})
         text = self.texts[min(len(self.calls), len(self.texts)) - 1]
         return ExplanationOutput(
             findings=[
@@ -76,7 +110,7 @@ def raising(*args, **kwargs):
 
 def run(audit_logs, **services):
     services.setdefault("document_service", fake_document(HEMOGLOBIN))
-    services.setdefault("retrieval_service", fake_retrieval(HEMOGLOBIN_SOURCE))
+    services.setdefault("retrieval_service", real_retrieval(HEMOGLOBIN_DOCUMENT))
     return analyze_report("report.pdf", b"%PDF-fake", "user-1", audit_logs=audit_logs, **services)
 
 
@@ -199,7 +233,11 @@ def test_safety_service_crash_returns_fallback(audit_logs):
     assert result.final_response is None
 
 
-@pytest.mark.parametrize("retrieval_service", [fake_retrieval(), raising], ids=["empty", "raises"])
+@pytest.mark.parametrize(
+    "retrieval_service",
+    [real_retrieval(), real_retrieval(error=RuntimeError("index unavailable")), raising],
+    ids=["found-false", "retriever-raises", "service-raises"],
+)
 def test_missing_sources_give_insufficient_information_message(audit_logs, retrieval_service):
     explanation = FakeExplanation(SAFE_TEXT)
 
@@ -296,3 +334,95 @@ def test_failed_document_stage_is_audited(audit_logs):
         ("document_agent", "error"),
         ("coordinator", "error"),
     ]
+
+
+# --- Retrieval Agent integration ---------------------------------------------------------
+
+
+def test_found_result_becomes_sources_for_explanation(audit_logs):
+    hybrid = FakeHybridRetriever(HEMOGLOBIN_DOCUMENT)
+    agent = MedicalRetrievalAgent(hybrid)
+    requests = []
+
+    def spying_retrieval(request):
+        requests.append(request)
+        return agent.retrieve(request)
+
+    explanation = FakeExplanation(SAFE_TEXT)
+    result = run(audit_logs, retrieval_service=spying_retrieval, explanation_service=explanation)
+
+    # The RetrievalRequest carries the Coordinator's own ids and the test names.
+    request = requests[0]
+    assert (request.task_id, request.report_id, request.user_id) == (result.task_id, result.report_id, "user-1")
+    assert request.test_names == ["Hemoglobin"]
+    assert hybrid.queries == ["Hemoglobin"]
+
+    # The found result reached the Explanation service as a source.
+    [source] = explanation.calls[0]["sources"]
+    assert source.test_name == "Hemoglobin"
+    assert SAFE_TEXT in source.information["passages"][0]
+    assert source.sources == [
+        {"title": "Hemoglobin Test", "url": "https://medlineplus.gov/lab-tests/hemoglobin-test/"}
+    ]
+    assert result.status == "approved"
+    assert SAFE_TEXT in result.final_response
+    assert INSUFFICIENT_INFORMATION_MESSAGE not in result.final_response
+
+
+def test_found_and_not_found_results_in_one_report(audit_logs):
+    explanation = FakeExplanation(SAFE_TEXT)
+
+    result = run(
+        audit_logs,
+        document_service=fake_document(HEMOGLOBIN, PLATELETS_UNVERIFIED),
+        retrieval_service=real_retrieval(HEMOGLOBIN_DOCUMENT),  # knows Hemoglobin only
+        explanation_service=explanation,
+    )
+
+    assert [s.test_name for s in explanation.calls[0]["sources"]] == ["Hemoglobin"]
+    hemoglobin_section, platelets_section = result.final_response.split("\n\n")[:2]
+    assert SAFE_TEXT in hemoglobin_section
+    assert INSUFFICIENT_INFORMATION_MESSAGE in platelets_section
+
+
+def test_retrieval_response_to_sources_skips_not_found_and_duplicates():
+    response = RetrievalResponse.model_validate({
+        "task_id": "t", "report_id": "r", "user_id": "u",
+        "results": [
+            {"test_name": "Hemoglobin", "found": True, "matches": [
+                {"information": "Passage one.", "sources": [{"title": "A", "url": "https://a.example/"}]},
+            ]},
+            {"test_name": "Platelets", "found": False},
+            {"test_name": "hemoglobin", "found": True, "matches": [
+                {"information": "Duplicate.", "sources": [{"title": "B", "url": "https://b.example/"}]},
+            ]},
+        ],
+    })
+
+    sources = retrieval_response_to_sources(response)
+
+    assert [(s.test_name, s.information) for s in sources] == [("Hemoglobin", {"passages": ["Passage one."]})]
+    assert sources[0].sources == [{"title": "A", "url": "https://a.example/"}]
+
+
+def test_retrieval_response_for_another_user_is_rejected(audit_logs):
+    agent = MedicalRetrievalAgent(FakeHybridRetriever(HEMOGLOBIN_DOCUMENT))
+
+    def wrong_user_retrieval(request):
+        return agent.retrieve(request.model_copy(update={"user_id": "someone-else"}))
+
+    explanation = FakeExplanation(SAFE_TEXT)
+    result = run(audit_logs, retrieval_service=wrong_user_retrieval, explanation_service=explanation)
+
+    # Treated as a retrieval failure: no evidence is used.
+    assert explanation.calls == []
+    assert INSUFFICIENT_INFORMATION_MESSAGE in result.final_response
+
+
+def test_retrieval_exception_is_audited_without_crashing(audit_logs):
+    result = run(audit_logs, retrieval_service=real_retrieval(error=RuntimeError("index unavailable")))
+
+    assert result.status == "approved"
+    [entry] = list(audit_logs.find({"task_id": result.task_id, "agent": "retrieval_agent"}))
+    assert (entry["action"], entry["status"]) == ("retrieve", "error")
+    assert entry["details"] == {"error_type": "RuntimeError"}

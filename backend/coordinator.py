@@ -12,12 +12,15 @@ import logging
 import re
 import uuid
 from collections.abc import Callable
+from functools import lru_cache
 from typing import Literal
 
 from pydantic import BaseModel, Field
 from pymongo.collection import Collection
 
 from agents.document_agent import DocumentExtractionError, DocumentExtractionResponse, extract_document
+from agents.retrieval_agent import MedicalRetrievalAgent
+from agents.retrieval_models import RetrievalRequest, RetrievalResponse
 from agents.safety_agent import (
     DISCLAIMER,
     ApprovedResponse,
@@ -133,14 +136,40 @@ class CoordinatorResult(BaseModel):
 
 # Each service is a plain function; pass your own to analyze_report() to replace it.
 DocumentService = Callable[[str, bytes], DocumentExtractionResponse]
-RetrievalService = Callable[[list[str]], list[RetrievedSource]]
+# Same shape as MedicalRetrievalAgent.retrieve, so an agent's bound method can be passed in.
+RetrievalService = Callable[[RetrievalRequest], RetrievalResponse]
 ExplanationService = Callable[[list[Finding], list[RetrievedSource], str | None], ExplanationOutput]
 SafetyService = Callable[[SafetyValidateRequest], ApprovedResponse | RejectedResponse]
 
 
-def placeholder_retrieval(test_names: list[str]) -> list[RetrievedSource]:
-    """PLACEHOLDER until Member 2's Retrieval Agent is merged: finds nothing."""
-    return []
+@lru_cache(maxsize=1)
+def _default_retrieval_agent() -> MedicalRetrievalAgent:
+    # Created on first use, not at import: building it loads the knowledge base. If
+    # construction fails, nothing is cached and the retrieval stage reports an error.
+    return MedicalRetrievalAgent()
+
+
+def default_retrieval(request: RetrievalRequest) -> RetrievalResponse:
+    """The real Retrieval Agent (Member 2)."""
+    return _default_retrieval_agent().retrieve(request)
+
+
+def retrieval_response_to_sources(response: RetrievalResponse) -> list[RetrievedSource]:
+    """Convert the Retrieval Agent's response into the sources the Coordinator passes on.
+
+    Results with found=False are skipped, so those tests take the existing
+    insufficient-information path. Each test appears at most once.
+    """
+    sources: dict[str, RetrievedSource] = {}
+    for result in response.results:
+        if not result.found or result.test_name.lower() in sources:
+            continue
+        sources[result.test_name.lower()] = RetrievedSource(
+            test_name=result.test_name,
+            information={"passages": [match.information for match in result.matches]},
+            sources=[s.model_dump(mode="json") for match in result.matches for s in match.sources],
+        )
+    return list(sources.values())
 
 
 def placeholder_explanation(
@@ -281,7 +310,7 @@ def analyze_report(
 ) -> CoordinatorResult:
     """Run an uploaded report through the full pipeline. Never raises for agent failures."""
     document_service = document_service or extract_document
-    retrieval_service = retrieval_service or placeholder_retrieval
+    retrieval_service = retrieval_service or default_retrieval
     explanation_service = explanation_service or placeholder_explanation
     safety_service = safety_service or validate_draft
     # `is None`, not `or`: pymongo collections refuse to be used as a true/false value.
@@ -356,10 +385,16 @@ def analyze_report(
     # 3. Retrieval stage
     requested = {f.test.lower() for f in findings}
     try:
-        raw_sources = retrieval_service([f.test for f in findings])
+        request = RetrievalRequest(
+            task_id=task_id, report_id=report_id, user_id=user_id, test_names=[f.test for f in findings]
+        )
+        response = RetrievalResponse.model_validate(retrieval_service(request))
+        # Evidence tagged for another task/report/user must never reach this report.
+        if (response.task_id, response.report_id, response.user_id) != (task_id, report_id, user_id):
+            raise ValueError("Retrieval response IDs do not match the request")
         retrieved_sources = [
             source
-            for source in (RetrievedSource.model_validate(s) for s in raw_sources or [])
+            for source in retrieval_response_to_sources(response)
             # Ignore sources for tests we didn't ask about, and empty ones.
             if source.test_name.lower() in requested and source.information
         ]
