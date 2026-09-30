@@ -1,9 +1,27 @@
 """End-to-end test of POST /api/analyze-report through the real Coordinator path.
 
+Why this exists alongside tests/test_analysis_api.py:
+    test_analysis_api.py replaces analyze_report() entirely, so it only proves the
+    route's wiring (authentication, upload handling, forwarding the user id). This
+    file runs the actual pipeline behind the same route, to check what the fake
+    there can't:
+
+    - The full audit trail in detail: every stage writes its entry, in order, all
+      under the same task_id, report_id and user_id, with nothing logged elsewhere.
+    - The Safety Agent is really in the loop, not bypassed. The explanation stub's
+      text is validated by the real Safety Agent, so an unsafe stub makes the main
+      test fail. (Verified by swapping in an unsupported claim, which turned the
+      result into "fallback".) It is not only a check that the happy path returns 200.
+    - Both retrieval paths through HTTP: a test found in the knowledge base gets an
+      explanation; one that isn't gets the insufficient-information message.
+
+    HybridRetriever is faked (no ChromaDB, no embedding model), which keeps the
+    test fast and deterministic, so its assertions can be exact.
+
 Real: authentication, upload handling, Document Agent (selectable-text PDF, so no
 Tesseract), MedicalRetrievalAgent, Safety Agent and audit logging (on mongomock).
-Faked: only HybridRetriever (no ChromaDB or embeddings) and the Explanation service,
-which is intentionally not real yet.
+Faked: only HybridRetriever and the Explanation service, which is intentionally not
+real yet.
 """
 
 import pymupdf as fitz
