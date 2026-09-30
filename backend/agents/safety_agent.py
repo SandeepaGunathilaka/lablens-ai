@@ -2,13 +2,14 @@ import math
 import re
 from typing import Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 from pymongo.collection import Collection
 
 from agents import safety_config as config
 from database import get_audit_logs_collection
 from logging_service import log_event
+from security.dependencies import get_current_user
 
 # Every approved response must contain this exact text (case and line breaks don't matter).
 DISCLAIMER = (
@@ -236,7 +237,15 @@ def check_disclaimer(draft_response: str) -> bool:
 
 
 @router.post("/validate", response_model=ApprovedResponse | RejectedResponse)
-def validate(payload: SafetyValidateRequest, audit_logs: Collection = Depends(get_audit_logs_collection)):
+def validate(
+    payload: SafetyValidateRequest,
+    audit_logs: Collection = Depends(get_audit_logs_collection),
+    current_user: str = Depends(get_current_user),
+):
+    # Callers may only validate drafts for themselves; checked before anything runs or is logged.
+    if payload.user_id != current_user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed for this user")
+
     draft = payload.draft_response
     results = [r.model_dump() for r in payload.original_result]
     sources = [s.model_dump() for s in payload.retrieved_sources]
