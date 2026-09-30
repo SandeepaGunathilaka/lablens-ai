@@ -32,7 +32,7 @@ from agents.hybrid_retriever import HybridRetrievalResult
 from agents.knowledge_base import KnowledgeDocument, KnowledgeSource
 from agents.retrieval_agent import MedicalRetrievalAgent
 from agents.safety_agent import DISCLAIMER
-from coordinator import INSUFFICIENT_INFORMATION_MESSAGE, ExplainedFinding, ExplanationOutput
+from coordinator import FALLBACK_MESSAGE, INSUFFICIENT_INFORMATION_MESSAGE, ExplainedFinding, ExplanationOutput
 
 ANALYZE_URL = "/api/analyze-report"
 
@@ -181,3 +181,52 @@ def test_analyze_report_without_token_runs_nothing(client, audit_logs, hybrid, e
     assert hybrid.queries == []
     assert explanation.calls == []
     assert audit_logs.count_documents({}) == 0
+
+
+UNSUPPORTED_CLAIM = "Low values are commonly caused by kidney disease."
+
+
+class UnsafeStubExplanation(StubExplanation):
+    """Same stub, but every explanation makes a claim the retrieved source doesn't support."""
+
+    def __call__(self, findings, retrieved_sources, instruction):
+        output = super().__call__(findings, retrieved_sources, instruction)
+        for finding in output.findings:
+            finding.explanation = f"{STUB_MARKER} {UNSUPPORTED_CLAIM}"
+        return output
+
+
+@pytest.fixture
+def unsafe_explanation(monkeypatch):
+    stub = UnsafeStubExplanation()
+    monkeypatch.setattr(coordinator, "placeholder_explanation", stub)
+    return stub
+
+
+def test_analyze_report_unsupported_claim_is_rejected_and_falls_back(
+    client, auth_headers, audit_logs, hybrid, unsafe_explanation
+):
+    response = client.post(
+        ANALYZE_URL,
+        files={"file": ("cbc.pdf", make_pdf(REPORT_TEXT), "application/pdf")},
+        headers=auth_headers("user-1"),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "fallback"
+    assert body["message"] == FALLBACK_MESSAGE
+    # No approved draft is returned, and the rejected text appears nowhere in the response.
+    assert body["final_response"] is None
+    assert "kidney" not in response.text
+    # The extracted values are still returned.
+    assert [(r["test"], r["value"]) for r in body["results"]] == [("Hemoglobin", 11.2), ("Platelets", 250.0)]
+
+    # The real Safety Agent rejected every attempt (1 + 2 regenerations) for the unsupported claim.
+    assert len(unsafe_explanation.calls) == 3
+    safety_entries = list(
+        audit_logs.find({"task_id": body["task_id"], "agent": "safety_agent"}).sort([("timestamp", 1), ("_id", 1)])
+    )
+    assert [(e["status"], e["details"]["reason"]) for e in safety_entries] == [
+        ("rejected", "unsupported_claim_detected")
+    ] * 3
