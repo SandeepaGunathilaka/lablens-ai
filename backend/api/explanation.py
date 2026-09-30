@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from functools import lru_cache
+
+from fastapi import APIRouter, Depends, HTTPException
 
 from agents.explanation.models import (
     ExplanationRequest
@@ -13,11 +15,17 @@ router = APIRouter(
     tags=["Explanation Agent"]
 )
 
-service = ExplanationService()
+@lru_cache(maxsize=1)
+def get_explanation_service() -> ExplanationService:
+    """Initialize the model client on demand; allow offline test injection."""
+    return ExplanationService()
 
 
 @router.post("/explain")
-def explain(request: ExplanationRequest):
+def explain(
+    request: ExplanationRequest,
+    service: ExplanationService = Depends(get_explanation_service),
+):
 
     try:
         explanation = service.generate_explanation(

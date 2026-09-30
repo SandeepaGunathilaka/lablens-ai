@@ -339,7 +339,7 @@ def test_production_benchmark_hashes_and_no_leakage():
     assert not (groups["calibration"] & groups["held_out"])
 
     # Verified frozen dataset and KB hashes
-    assert dataset_sha256() == "e481c484da856d1488b2bd728cb4c0732b577d4bea23c3a52156271c2f5e890b"
+    assert dataset_sha256() == "cf799511635cb44add34e8710933142a45a1c717a8f712551f7f42809b1dd0e1"
     assert knowledge_base_sha256() == "f704ff3d180124a90638695413f594531e7609e0a0902257dcd36b10a7c4bcc4"
 
 
@@ -373,3 +373,12 @@ def test_cli_runner(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "similarity >= 0.0" in out
     assert "margin >= 0.2254" in out
+
+
+def test_lf_fixture_matches_historical_mixed_newline_benchmark():
+    """Prove the fingerprint migration changes only Windows line endings."""
+    canonical = DATASET_PATH.read_bytes()
+    assert b"\r" not in canonical
+    assert canonical.endswith(b"\n")
+    historical = canonical[:-1].replace(b"\n", b"\r\n") + b"\n"
+    assert hashlib.sha256(historical).hexdigest() == "e481c484da856d1488b2bd728cb4c0732b577d4bea23c3a52156271c2f5e890b"

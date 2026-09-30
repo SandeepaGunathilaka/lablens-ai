@@ -17,7 +17,6 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
 import pytesseract
 from pytesseract import Output
-import spacy
 
 router = APIRouter(prefix="/agents/document", tags=["document-agent"])
 
@@ -88,6 +87,9 @@ def _load_nlp():
     yet been downloaded, while the deterministic CBC/lipid alias list marks fields
     appropriately. Setup instructions in the README install ``en_core_web_sm``.
     """
+    # Native NLP dependencies are needed only for document extraction, not API startup.
+    import spacy
+
     try:
         return spacy.load("en_core_web_sm")
     except OSError:

@@ -216,7 +216,8 @@ def test_compare_calibration_vs_heldout():
     assert comp["supported_correct_coverage"]["difference"] == pytest.approx(0.1071 - 0.125)
 
 
-def test_build_heldout_report_serialization(tmp_path, monkeypatch):
+@pytest.mark.parametrize('calibration_state', ['missing', 'empty', 'null_metrics', 'present'])
+def test_build_heldout_report_serialization(tmp_path, monkeypatch, calibration_state):
     monkeypatch.setattr(heldout, "git_revision", lambda: "fake-git-rev")
 
     # Generate 48 synthetic held-out queries: 28 supported, 20 negative
@@ -238,7 +239,17 @@ def test_build_heldout_report_serialization(tmp_path, monkeypatch):
         collection_name="fake-collection",
     )
 
-    report = heldout.build_heldout_report(store=store, rows=rows)
+    cal_path = tmp_path / "calibration.json"
+    if calibration_state != "missing":
+        metrics = ({"accepted_precision": 1.0, "supported_correct_coverage": 0.125}
+                   if calibration_state == "present" else
+                   {"accepted_precision": None, "supported_correct_coverage": None}
+                   if calibration_state == "null_metrics" else {})
+        cal_path.write_text(json.dumps({"selected_policy": {"calibration_metrics": metrics}}), encoding="utf-8")
+    report = heldout.build_heldout_report(store=store, rows=rows, calibration_report_path=cal_path)
+    summary = report["generalization_summary"]
+    assert summary["precision_status"] == ("retained" if calibration_state == "present" else "unavailable")
+    assert summary["coverage_status"] == ("reduced" if calibration_state == "present" else "unavailable")
 
     assert report["evaluation"]["name"] == "semantic_acceptance_heldout"
     assert report["evaluation"]["dataset_sha256"] == dataset_sha256()
@@ -264,7 +275,7 @@ def test_build_heldout_report_serialization(tmp_path, monkeypatch):
 
 
 def test_production_benchmark_hashes():
-    assert dataset_sha256() == "e481c484da856d1488b2bd728cb4c0732b577d4bea23c3a52156271c2f5e890b"
+    assert dataset_sha256() == "cf799511635cb44add34e8710933142a45a1c717a8f712551f7f42809b1dd0e1"
     assert knowledge_base_sha256() == "f704ff3d180124a90638695413f594531e7609e0a0902257dcd36b10a7c4bcc4"
 
 

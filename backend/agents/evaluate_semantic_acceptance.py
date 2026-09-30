@@ -317,8 +317,16 @@ def build_heldout_report(
         else None
     )
     interpretation = {
-        "precision_status": "retained" if prec_retained else "reduced",
-        "coverage_status": "consistent" if cov_diff is not None and abs(cov_diff) < 0.05 else ("higher" if cov_diff > 0 else "reduced"),
+        "precision_status": (
+            "unavailable" if held_metrics["accepted_precision"] is None
+            or cal_metrics.get("accepted_precision") is None
+            else ("retained" if prec_retained else "reduced")
+        ),
+        "coverage_status": (
+            "unavailable" if cov_diff is None
+            else "consistent" if abs(cov_diff) < 0.05
+            else "higher" if cov_diff > 0 else "reduced"
+        ),
         "negative_safety_status": (
             "zero_false_accepts" if held_metrics["negative_false_accept_count"] == 0 else "false_accepts_present"
         ),
