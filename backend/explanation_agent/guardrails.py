@@ -6,7 +6,7 @@ import re
 from pydantic import BaseModel, Field, ValidationError
 
 from explanation_agent.copy import required_explanation_sentences
-from explanation_agent.models import ExplanationRequest, Status
+from explanation_agent.models import ExplanationTask
 
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 _DISALLOWED = (
@@ -66,11 +66,7 @@ def disallowed_reasons(text: str) -> list[str]:
     return reasons
 
 
-def validate_model_draft(
-    draft: ModelDraft,
-    request: ExplanationRequest,
-    status: Status,
-) -> list[str]:
+def validate_model_draft(draft: ModelDraft, task: ExplanationTask) -> list[str]:
     """Return rejection reasons. An empty list means the draft can be shown."""
 
     if draft.insufficient_information:
@@ -90,9 +86,7 @@ def validate_model_draft(
             reasons.append(f"{name} exceeds the length limit")
 
     explanation = fields["explanation"]
-    for sentence in required_explanation_sentences(
-        request.value, request.unit, request.reference_range, status
-    ):
+    for sentence in required_explanation_sentences(task):
         if sentence not in explanation:
             reasons.append(f"explanation is missing this exact sentence: {sentence}")
 
@@ -105,7 +99,7 @@ def validate_model_draft(
     reasons.extend(disallowed_reasons(narrative))
     reasons.extend(disallowed_reasons("\n".join(draft.sources_used)))
 
-    allowed = {source.title.casefold() for source in request.retrieved_sources}
+    allowed = {passage.title.casefold() for passage in task.passages}
     if not draft.sources_used:
         reasons.append("sources_used is empty")
     for title in draft.sources_used:

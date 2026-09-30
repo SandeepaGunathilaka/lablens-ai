@@ -1,11 +1,19 @@
-"""Structured input and output for the Explanation Agent."""
+"""Structured input and output for the Explanation Agent.
+
+The request uses the pipeline's shared shapes: findings carry the Document Agent's
+``test`` / numeric ``value`` fields plus the status the Coordinator computed in code,
+and ``retrieved_sources`` is the same list the Coordinator sends to the Safety Agent.
+"""
 
 import math
-from typing import Literal
+from dataclasses import dataclass, field
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-Status = Literal["low", "normal", "high", "unknown"]
+from agents.safety_agent import RetrievedSource
+
+Status = Literal["low", "normal", "high"]
 GenerationMode = Literal[
     "llm",
     "template",
@@ -14,23 +22,26 @@ GenerationMode = Literal[
     "unavailable",
 ]
 
+RequestId = Annotated[str, Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$")]
 
-class RetrievedSource(BaseModel):
-    """One chunk from the Retrieval Agent. Optional on the request."""
 
-    title: str = Field(min_length=1, max_length=300)
-    excerpt: str = Field(min_length=1, max_length=4000)
-    url: str | None = Field(default=None, max_length=500)
-    source_id: str | None = Field(default=None, max_length=128)
+class ExplanationFinding(BaseModel):
+    """One extracted lab value. ``status`` is None when the Coordinator could not compute it."""
 
-    @field_validator("title", "excerpt", mode="before")
+    test: str = Field(min_length=1, max_length=200)
+    value: float
+    unit: str | None = Field(default=None, max_length=40)
+    reference_range: str | None = Field(default=None, max_length=200)
+    status: Status | None = None
+
+    @field_validator("test", mode="before")
     @classmethod
-    def strip_required(cls, value: object) -> object:
+    def strip_test(cls, value: object) -> object:
         if isinstance(value, str):
             return value.strip()
         return value
 
-    @field_validator("url", "source_id", mode="before")
+    @field_validator("unit", "reference_range", mode="before")
     @classmethod
     def blank_optional_to_none(cls, value: object) -> object:
         if value is None or not isinstance(value, str):
@@ -38,61 +49,30 @@ class RetrievedSource(BaseModel):
         stripped = value.strip()
         return stripped or None
 
-
-class ExplanationRequest(BaseModel):
-    """Patient result plus optional retrieved context.
-
-    ``status`` is calculated by the Coordinator with ``calculate_status``.
-    When it is omitted, the agent calculates it the same way and never asks
-    the language model to choose it.
-    """
-
-    task_id: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$")
-    test_name: str = Field(min_length=1, max_length=200)
-    value: str = Field(min_length=1, max_length=40)
-    unit: str = Field(min_length=1, max_length=40)
-    reference_range: str | None = Field(default=None, max_length=200)
-    status: Status | None = None
-    retrieved_sources: list[RetrievedSource] = Field(default_factory=list, max_length=8)
-    user_question: str | None = Field(default=None, max_length=1000)
-    rejection_feedback: list[str] = Field(default_factory=list, max_length=8)
-    previous_draft: str | None = Field(default=None, max_length=8000)
-
-    @field_validator("test_name", "unit", mode="before")
+    @field_validator("value")
     @classmethod
-    def strip_required_text(cls, value: object) -> object:
-        if isinstance(value, str):
-            return value.strip()
+    def finite_value(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("value must be a finite number")
         return value
 
-    @field_validator("reference_range", "user_question", "previous_draft", mode="before")
+
+class ExplanationRequest(BaseModel):
+    task_id: RequestId
+    report_id: RequestId
+    user_id: RequestId
+    findings: list[ExplanationFinding] = Field(min_length=1, max_length=50)
+    retrieved_sources: list[RetrievedSource] = Field(default_factory=list, max_length=50)
+    rejection_feedback: list[str] = Field(default_factory=list, max_length=8)
+    user_question: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("user_question", mode="before")
     @classmethod
-    def strip_optional_text(cls, value: object) -> object:
+    def strip_question(cls, value: object) -> object:
         if value is None or not isinstance(value, str):
             return value
         stripped = value.strip()
         return stripped or None
-
-    @field_validator("value", mode="before")
-    @classmethod
-    def preserve_reported_value(cls, value: object) -> str:
-        """Keep report text unchanged. Bare JSON numbers become a stable string."""
-
-        if isinstance(value, bool) or value is None:
-            raise ValueError("value must be a number or a numeric string")
-        if isinstance(value, (int, float)):
-            number = float(value)
-            if not math.isfinite(number):
-                raise ValueError("value must be a finite number")
-            return format(number, "g")
-        if isinstance(value, str):
-            stripped = value.strip()
-            if not stripped:
-                raise ValueError("value must not be empty")
-            if len(stripped) > 40:
-                raise ValueError("value is too long")
-            return stripped
-        raise ValueError("value must be a number or a numeric string")
 
     @field_validator("rejection_feedback")
     @classmethod
@@ -108,16 +88,10 @@ class ExplanationRequest(BaseModel):
         return cleaned
 
 
-class ExplanationResponse(BaseModel):
-    """Four narrative fields the Coordinator joins into the Safety Agent draft."""
-
-    task_id: str
+class ExplainedFinding(BaseModel):
     test_name: str
-    value: str
-    unit: str
-    reference_range: str | None
-    status: Status
-    status_detail: str
+    result: str
+    status: Status | None
     what_it_measures: str
     explanation: str
     possible_meaning: str
@@ -125,4 +99,35 @@ class ExplanationResponse(BaseModel):
     insufficient_information: bool
     sources_used: list[str]
     generation_mode: GenerationMode
-    regenerated: bool
+
+
+class ExplanationResponse(BaseModel):
+    task_id: str
+    report_id: str
+    user_id: str
+    findings: list[ExplainedFinding]
+    # For the Coordinator and audit trail only; never shown to the patient.
+    safety_notes: list[str] = Field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class Passage:
+    """One cited piece of retrieved text the model may use."""
+
+    title: str
+    url: str | None
+    excerpt: str
+
+
+@dataclass(frozen=True)
+class ExplanationTask:
+    """Everything needed to explain a single finding."""
+
+    test_name: str
+    value: float
+    unit: str | None
+    reference_range: str | None
+    status: Status | None
+    passages: list[Passage] = field(default_factory=list)
+    rejection_feedback: list[str] = field(default_factory=list)
+    user_question: str | None = None
