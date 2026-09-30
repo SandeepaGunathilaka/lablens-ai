@@ -1,0 +1,22 @@
+{
+  "id": "triglycerides",
+  "test_name": "Triglycerides",
+  "aliases": [
+    "Triglyceride",
+    "TG",
+    "TRIG"
+  ],
+  "report_type": "LIPID_PROFILE",
+  "title": "Triglycerides Test",
+  "definition": "Triglycerides are fats that the body uses as an energy source.",
+
+  "what_it_measures": "A triglycerides test measures the amount of these fats in a blood sample.",
+
+  "general_information": "The body stores energy from food as triglycerides and releases it when needed. Triglyceride levels can be checked as part of a lipid profile.",
+  "source": {
+    "publisher": "MedlinePlus",
+    "title": "Triglycerides Test",
+    "url": "https://medlineplus.gov/lab-tests/triglycerides-test/",
+    "accessed_date": "2026-09-28"
+  }
+}

@@ -55,7 +55,7 @@ def test_log_event_never_raises_when_database_fails(caplog):
 # --- GET /api/audit/{task_id} -----------------------------------------------------
 
 
-def test_get_audit_returns_task_entries_sorted_by_timestamp(client, audit_logs):
+def test_get_audit_returns_task_entries_sorted_by_timestamp(client, audit_logs, auth_headers):
     def entry(log_id, task_id, timestamp):
         return {**EVENT, "log_id": log_id, "task_id": task_id, "timestamp": timestamp, "details": {}}
 
@@ -67,7 +67,7 @@ def test_get_audit_returns_task_entries_sorted_by_timestamp(client, audit_logs):
         entry("third", "task-1", "2026-09-26T10:00:03.000000+00:00"),
     ])
 
-    response = client.get("/api/audit/task-1")
+    response = client.get("/api/audit/task-1", headers=auth_headers("user-1"))
 
     assert response.status_code == 200
     body = response.json()
@@ -75,8 +75,8 @@ def test_get_audit_returns_task_entries_sorted_by_timestamp(client, audit_logs):
     assert "_id" not in body[0]
 
 
-def test_get_audit_returns_empty_list_for_unknown_task(client):
-    response = client.get("/api/audit/no-such-task")
+def test_get_audit_returns_empty_list_for_unknown_task(client, auth_headers):
+    response = client.get("/api/audit/no-such-task", headers=auth_headers("user-1"))
 
     assert response.status_code == 200
     assert response.json() == []
@@ -108,10 +108,11 @@ def safety_payload(draft):
     ],
     ids=["approved", "rejected"],
 )
-def test_safety_validation_writes_audit_entry(client, audit_logs, draft, status, reason):
-    assert client.post("/agents/safety/validate", json=safety_payload(draft)).status_code == 200
+def test_safety_validation_writes_audit_entry(client, audit_logs, auth_headers, draft, status, reason):
+    headers = auth_headers("user-9")
+    assert client.post("/agents/safety/validate", json=safety_payload(draft), headers=headers).status_code == 200
 
-    entries = client.get("/api/audit/task-42").json()
+    entries = client.get("/api/audit/task-42", headers=headers).json()
     assert len(entries) == 1
     entry = entries[0]
     assert entry["agent"] == "safety_agent"

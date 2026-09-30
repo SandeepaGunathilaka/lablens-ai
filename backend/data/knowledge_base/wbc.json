@@ -1,0 +1,24 @@
+{
+  "id": "wbc",
+  "test_name": "WBC",
+  "aliases": [
+    "White Blood Cell",
+    "White Blood Cells",
+    "White Blood Cell Count",
+    "White Cell Count",
+  "Leukocyte Count"
+  ],
+  "report_type": "CBC",
+  "title": "White Blood Count (WBC)",
+  "definition": "White blood cells, also called leukocytes, are part of the immune system and help the body fight infections.",
+
+  "what_it_measures": "A WBC count measures the total number of white blood cells in a blood sample.",
+
+  "general_information": "A blood differential is a separate test that measures the amount of each type of white blood cell. A total WBC count alone cannot confirm a diagnosis.",
+  "source": {
+    "publisher": "MedlinePlus",
+    "title": "White Blood Count (WBC)",
+    "url": "https://medlineplus.gov/lab-tests/white-blood-count-wbc/",
+    "accessed_date": "2026-09-28"
+  }
+}

@@ -1,0 +1,1158 @@
+{
+    "dataset_version":  "1.0",
+    "description":  "Fixed author-labelled semantic benchmark: conceptual and natural-language supported queries, out-of-scope medical concepts, and unrelated negatives. Labels and wording fixed before predictions; no acceptance threshold.",
+    "queries":  [
+                    {
+                        "id":  "hemoglobin_direct_semantic_1",
+                        "query":  "protein that ferries oxygen inside red cells",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "calibration",
+                        "group_id":  "hemoglobin_function_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_direct_semantic_2",
+                        "query":  "red-cell protein responsible for oxygen transport",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "calibration",
+                        "group_id":  "hemoglobin_function_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_direct_semantic_3",
+                        "query":  "amount of the iron-bearing protein in a blood specimen",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "held_out",
+                        "group_id":  "hemoglobin_measurement_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_paraphrase_1",
+                        "query":  "the protein red cells use to bring oxygen to tissues",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "calibration",
+                        "group_id":  "hemoglobin_function_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_paraphrase_2",
+                        "query":  "the oxygen carrier packaged within red blood cells",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "calibration",
+                        "group_id":  "hemoglobin_function_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_paraphrase_3",
+                        "query":  "quantifying the iron-containing protein of red cells",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "held_out",
+                        "group_id":  "hemoglobin_measurement_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_description_1",
+                        "query":  "A protein in red cells picks up oxygen in the lungs and carries it elsewhere.",
+                        "category":  "description",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "calibration",
+                        "group_id":  "hemoglobin_function_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_description_2",
+                        "query":  "This red-cell substance transports oxygen throughout the body.",
+                        "category":  "description",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "calibration",
+                        "group_id":  "hemoglobin_function_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_description_3",
+                        "query":  "A CBC measurement reports how much iron-bearing red-cell protein is in the sample.",
+                        "category":  "description",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "held_out",
+                        "group_id":  "hemoglobin_measurement_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_supported_natural_language_1",
+                        "query":  "Which protein lets red cells carry oxygen to the tissues?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "calibration",
+                        "group_id":  "hemoglobin_function_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_supported_natural_language_2",
+                        "query":  "What is the oxygen-transporting protein inside red cells called?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "calibration",
+                        "group_id":  "hemoglobin_function_wording"
+                    },
+                    {
+                        "id":  "hemoglobin_supported_natural_language_3",
+                        "query":  "Which blood measurement quantifies the iron-containing protein inside red cells?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "hemoglobin",
+                        "split":  "held_out",
+                        "group_id":  "hemoglobin_measurement_wording"
+                    },
+                    {
+                        "id":  "wbc_direct_semantic_1",
+                        "query":  "blood cells involved in defending against infections",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "wbc",
+                        "split":  "calibration",
+                        "group_id":  "wbc_function_wording"
+                    },
+                    {
+                        "id":  "wbc_direct_semantic_2",
+                        "query":  "infection-fighting members of the immune system in blood",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "wbc",
+                        "split":  "calibration",
+                        "group_id":  "wbc_function_wording"
+                    },
+                    {
+                        "id":  "wbc_direct_semantic_3",
+                        "query":  "total number of circulating leukocytes without a subtype breakdown",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "wbc",
+                        "split":  "held_out",
+                        "group_id":  "wbc_measurement_wording"
+                    },
+                    {
+                        "id":  "wbc_paraphrase_1",
+                        "query":  "the blood\u0027s cells that participate in immune defense",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "wbc",
+                        "split":  "calibration",
+                        "group_id":  "wbc_function_wording"
+                    },
+                    {
+                        "id":  "wbc_paraphrase_2",
+                        "query":  "cells in the bloodstream that help fight infections",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "wbc",
+                        "split":  "calibration",
+                        "group_id":  "wbc_function_wording"
+                    },
+                    {
+                        "id":  "wbc_paraphrase_3",
+                        "query":  "counting all leukocytes together instead of sorting them by type",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "wbc",
+                        "split":  "held_out",
+                        "group_id":  "wbc_measurement_wording"
+                    },
+                    {
+                        "id":  "wbc_description_1",
+                        "query":  "These circulating cells are part of the body\u0027s protection against infection.",
+                        "category":  "description",
+                        "expected_document_id":  "wbc",
+                        "split":  "calibration",
+                        "group_id":  "wbc_function_wording"
+                    },
+                    {
+                        "id":  "wbc_description_2",
+                        "query":  "The immune system includes these infection-fighting blood cells.",
+                        "category":  "description",
+                        "expected_document_id":  "wbc",
+                        "split":  "calibration",
+                        "group_id":  "wbc_function_wording"
+                    },
+                    {
+                        "id":  "wbc_description_3",
+                        "query":  "This result totals the leukocytes in a sample; a differential supplies their separate types.",
+                        "category":  "description",
+                        "expected_document_id":  "wbc",
+                        "split":  "held_out",
+                        "group_id":  "wbc_measurement_wording"
+                    },
+                    {
+                        "id":  "wbc_supported_natural_language_1",
+                        "query":  "Which blood cells help the body defend itself against infection?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "wbc",
+                        "split":  "calibration",
+                        "group_id":  "wbc_function_wording"
+                    },
+                    {
+                        "id":  "wbc_supported_natural_language_2",
+                        "query":  "What cells in blood take part in the immune system\u0027s defenses?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "wbc",
+                        "split":  "calibration",
+                        "group_id":  "wbc_function_wording"
+                    },
+                    {
+                        "id":  "wbc_supported_natural_language_3",
+                        "query":  "Which result gives the total leukocytes rather than the amounts of individual types?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "wbc",
+                        "split":  "held_out",
+                        "group_id":  "wbc_measurement_wording"
+                    },
+                    {
+                        "id":  "platelets_direct_semantic_1",
+                        "query":  "blood components involved in clot formation",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "platelets",
+                        "split":  "calibration",
+                        "group_id":  "platelets_function_wording"
+                    },
+                    {
+                        "id":  "platelets_direct_semantic_2",
+                        "query":  "clot-forming components that help stop bleeding",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "platelets",
+                        "split":  "calibration",
+                        "group_id":  "platelets_function_wording"
+                    },
+                    {
+                        "id":  "platelets_direct_semantic_3",
+                        "query":  "number of thrombocytes in a blood specimen",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "platelets",
+                        "split":  "held_out",
+                        "group_id":  "platelets_measurement_wording"
+                    },
+                    {
+                        "id":  "platelets_paraphrase_1",
+                        "query":  "the blood components that contribute to a clot",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "platelets",
+                        "split":  "calibration",
+                        "group_id":  "platelets_function_wording"
+                    },
+                    {
+                        "id":  "platelets_paraphrase_2",
+                        "query":  "the clotting helpers that work to stop bleeding",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "platelets",
+                        "split":  "calibration",
+                        "group_id":  "platelets_function_wording"
+                    },
+                    {
+                        "id":  "platelets_paraphrase_3",
+                        "query":  "enumerating thrombocytes in the sampled blood",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "platelets",
+                        "split":  "held_out",
+                        "group_id":  "platelets_measurement_wording"
+                    },
+                    {
+                        "id":  "platelets_description_1",
+                        "query":  "These blood components help form a clot when bleeding needs to stop.",
+                        "category":  "description",
+                        "expected_document_id":  "platelets",
+                        "split":  "calibration",
+                        "group_id":  "platelets_function_wording"
+                    },
+                    {
+                        "id":  "platelets_description_2",
+                        "query":  "Clot formation depends in part on these components of blood.",
+                        "category":  "description",
+                        "expected_document_id":  "platelets",
+                        "split":  "calibration",
+                        "group_id":  "platelets_function_wording"
+                    },
+                    {
+                        "id":  "platelets_description_3",
+                        "query":  "A CBC can include this measurement of the number of thrombocytes present.",
+                        "category":  "description",
+                        "expected_document_id":  "platelets",
+                        "split":  "held_out",
+                        "group_id":  "platelets_measurement_wording"
+                    },
+                    {
+                        "id":  "platelets_supported_natural_language_1",
+                        "query":  "Which blood components help make clots to stop bleeding?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "platelets",
+                        "split":  "calibration",
+                        "group_id":  "platelets_function_wording"
+                    },
+                    {
+                        "id":  "platelets_supported_natural_language_2",
+                        "query":  "What components of blood participate in clot formation?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "platelets",
+                        "split":  "calibration",
+                        "group_id":  "platelets_function_wording"
+                    },
+                    {
+                        "id":  "platelets_supported_natural_language_3",
+                        "query":  "Which CBC result tells how many thrombocytes the sample contains?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "platelets",
+                        "split":  "held_out",
+                        "group_id":  "platelets_measurement_wording"
+                    },
+                    {
+                        "id":  "hdl_direct_semantic_1",
+                        "query":  "cholesterol carrier that transports it toward the liver for removal",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "hdl",
+                        "split":  "calibration",
+                        "group_id":  "hdl_function_wording"
+                    },
+                    {
+                        "id":  "hdl_direct_semantic_2",
+                        "query":  "lipoprotein involved in returning cholesterol to the liver",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "hdl",
+                        "split":  "calibration",
+                        "group_id":  "hdl_function_wording"
+                    },
+                    {
+                        "id":  "hdl_direct_semantic_3",
+                        "query":  "blood measurement of the cholesterol described as good",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "hdl",
+                        "split":  "held_out",
+                        "group_id":  "hdl_measurement_wording"
+                    },
+                    {
+                        "id":  "hdl_paraphrase_1",
+                        "query":  "the carrier collecting cholesterol and bringing it back to the liver",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "hdl",
+                        "split":  "calibration",
+                        "group_id":  "hdl_function_wording"
+                    },
+                    {
+                        "id":  "hdl_paraphrase_2",
+                        "query":  "cholesterol transport in the direction of liver removal",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "hdl",
+                        "split":  "calibration",
+                        "group_id":  "hdl_function_wording"
+                    },
+                    {
+                        "id":  "hdl_paraphrase_3",
+                        "query":  "the lab reading for the so-called good form of cholesterol",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "hdl",
+                        "split":  "held_out",
+                        "group_id":  "hdl_measurement_wording"
+                    },
+                    {
+                        "id":  "hdl_description_1",
+                        "query":  "This lipoprotein gathers cholesterol from blood and delivers it to the liver.",
+                        "category":  "description",
+                        "expected_document_id":  "hdl",
+                        "split":  "calibration",
+                        "group_id":  "hdl_function_wording"
+                    },
+                    {
+                        "id":  "hdl_description_2",
+                        "query":  "The liver receives cholesterol transported by this blood lipoprotein for removal.",
+                        "category":  "description",
+                        "expected_document_id":  "hdl",
+                        "split":  "calibration",
+                        "group_id":  "hdl_function_wording"
+                    },
+                    {
+                        "id":  "hdl_description_3",
+                        "query":  "This lipid result describes the amount of cholesterol in the form commonly nicknamed good.",
+                        "category":  "description",
+                        "expected_document_id":  "hdl",
+                        "split":  "held_out",
+                        "group_id":  "hdl_measurement_wording"
+                    },
+                    {
+                        "id":  "hdl_supported_natural_language_1",
+                        "query":  "Which lipoprotein brings cholesterol back to the liver to be removed?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "hdl",
+                        "split":  "calibration",
+                        "group_id":  "hdl_function_wording"
+                    },
+                    {
+                        "id":  "hdl_supported_natural_language_2",
+                        "query":  "What carrier collects cholesterol in blood and transports it toward the liver?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "hdl",
+                        "split":  "calibration",
+                        "group_id":  "hdl_function_wording"
+                    },
+                    {
+                        "id":  "hdl_supported_natural_language_3",
+                        "query":  "Which result on a lipid profile refers to the good cholesterol measurement?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "hdl",
+                        "split":  "held_out",
+                        "group_id":  "hdl_measurement_wording"
+                    },
+                    {
+                        "id":  "ldl_direct_semantic_1",
+                        "query":  "cholesterol carrier whose excess can contribute to vessel plaque",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "ldl",
+                        "split":  "calibration",
+                        "group_id":  "ldl_function_wording"
+                    },
+                    {
+                        "id":  "ldl_direct_semantic_2",
+                        "query":  "lipoprotein associated with cholesterol accumulation in blood vessels",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "ldl",
+                        "split":  "calibration",
+                        "group_id":  "ldl_function_wording"
+                    },
+                    {
+                        "id":  "ldl_direct_semantic_3",
+                        "query":  "blood measurement of the cholesterol described as bad",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "ldl",
+                        "split":  "held_out",
+                        "group_id":  "ldl_measurement_wording"
+                    },
+                    {
+                        "id":  "ldl_paraphrase_1",
+                        "query":  "the carrier linked to plaque when too much of its cholesterol is present",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "ldl",
+                        "split":  "calibration",
+                        "group_id":  "ldl_function_wording"
+                    },
+                    {
+                        "id":  "ldl_paraphrase_2",
+                        "query":  "cholesterol transported by the lipoprotein associated with vessel buildup",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "ldl",
+                        "split":  "calibration",
+                        "group_id":  "ldl_function_wording"
+                    },
+                    {
+                        "id":  "ldl_paraphrase_3",
+                        "query":  "the lab reading for the so-called bad form of cholesterol",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "ldl",
+                        "split":  "held_out",
+                        "group_id":  "ldl_measurement_wording"
+                    },
+                    {
+                        "id":  "ldl_description_1",
+                        "query":  "Excess cholesterol carried by this lipoprotein can contribute to plaque in vessels.",
+                        "category":  "description",
+                        "expected_document_id":  "ldl",
+                        "split":  "calibration",
+                        "group_id":  "ldl_function_wording"
+                    },
+                    {
+                        "id":  "ldl_description_2",
+                        "query":  "This blood carrier is discussed in connection with cholesterol buildup in vessel walls.",
+                        "category":  "description",
+                        "expected_document_id":  "ldl",
+                        "split":  "calibration",
+                        "group_id":  "ldl_function_wording"
+                    },
+                    {
+                        "id":  "ldl_description_3",
+                        "query":  "This lipid result describes the amount of cholesterol in the form commonly nicknamed bad.",
+                        "category":  "description",
+                        "expected_document_id":  "ldl",
+                        "split":  "held_out",
+                        "group_id":  "ldl_measurement_wording"
+                    },
+                    {
+                        "id":  "ldl_supported_natural_language_1",
+                        "query":  "Which lipoprotein carries cholesterol that can contribute to plaque when present in excess?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "ldl",
+                        "split":  "calibration",
+                        "group_id":  "ldl_function_wording"
+                    },
+                    {
+                        "id":  "ldl_supported_natural_language_2",
+                        "query":  "What cholesterol carrier is associated with buildup in blood vessels?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "ldl",
+                        "split":  "calibration",
+                        "group_id":  "ldl_function_wording"
+                    },
+                    {
+                        "id":  "ldl_supported_natural_language_3",
+                        "query":  "Which lipid profile result is commonly called the bad cholesterol measurement?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "ldl",
+                        "split":  "held_out",
+                        "group_id":  "ldl_measurement_wording"
+                    },
+                    {
+                        "id":  "triglycerides_direct_semantic_1",
+                        "query":  "circulating fats used by the body as fuel",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "calibration",
+                        "group_id":  "triglycerides_function_wording"
+                    },
+                    {
+                        "id":  "triglycerides_direct_semantic_2",
+                        "query":  "blood fats that provide an energy source",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "calibration",
+                        "group_id":  "triglycerides_function_wording"
+                    },
+                    {
+                        "id":  "triglycerides_direct_semantic_3",
+                        "query":  "stored food energy released later in the form of fat",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "held_out",
+                        "group_id":  "triglycerides_measurement_wording"
+                    },
+                    {
+                        "id":  "triglycerides_paraphrase_1",
+                        "query":  "the fats in blood that can supply the body with energy",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "calibration",
+                        "group_id":  "triglycerides_function_wording"
+                    },
+                    {
+                        "id":  "triglycerides_paraphrase_2",
+                        "query":  "energy-providing fats measured in a blood sample",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "calibration",
+                        "group_id":  "triglycerides_function_wording"
+                    },
+                    {
+                        "id":  "triglycerides_paraphrase_3",
+                        "query":  "the fat form in which the body keeps food energy for later use",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "held_out",
+                        "group_id":  "triglycerides_measurement_wording"
+                    },
+                    {
+                        "id":  "triglycerides_description_1",
+                        "query":  "These fats circulate in blood and serve as fuel for the body.",
+                        "category":  "description",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "calibration",
+                        "group_id":  "triglycerides_function_wording"
+                    },
+                    {
+                        "id":  "triglycerides_description_2",
+                        "query":  "A lipid measurement quantifies fats that the body uses for energy.",
+                        "category":  "description",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "calibration",
+                        "group_id":  "triglycerides_function_wording"
+                    },
+                    {
+                        "id":  "triglycerides_description_3",
+                        "query":  "The body stores energy from food in this form and releases it when needed.",
+                        "category":  "description",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "held_out",
+                        "group_id":  "triglycerides_measurement_wording"
+                    },
+                    {
+                        "id":  "triglycerides_supported_natural_language_1",
+                        "query":  "Which blood fats are used as a source of energy?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "calibration",
+                        "group_id":  "triglycerides_function_wording"
+                    },
+                    {
+                        "id":  "triglycerides_supported_natural_language_2",
+                        "query":  "What lipid result measures the fats that supply fuel to the body?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "calibration",
+                        "group_id":  "triglycerides_function_wording"
+                    },
+                    {
+                        "id":  "triglycerides_supported_natural_language_3",
+                        "query":  "In what fat form does the body store food energy to release later?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "triglycerides",
+                        "split":  "held_out",
+                        "group_id":  "triglycerides_measurement_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_direct_semantic_1",
+                        "query":  "combined cholesterol amount across the different carrier forms",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "calibration",
+                        "group_id":  "total_cholesterol_function_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_direct_semantic_2",
+                        "query":  "cholesterol measurement encompassing both good and bad fractions",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "calibration",
+                        "group_id":  "total_cholesterol_function_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_direct_semantic_3",
+                        "query":  "overall cholesterol quantity in a blood specimen",
+                        "category":  "direct_semantic",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "held_out",
+                        "group_id":  "total_cholesterol_measurement_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_paraphrase_1",
+                        "query":  "the cholesterol figure covering its various forms together",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "calibration",
+                        "group_id":  "total_cholesterol_function_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_paraphrase_2",
+                        "query":  "one cholesterol measurement incorporating good and bad carrier forms",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "calibration",
+                        "group_id":  "total_cholesterol_function_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_paraphrase_3",
+                        "query":  "how much cholesterol is present in the blood altogether",
+                        "category":  "paraphrase",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "held_out",
+                        "group_id":  "total_cholesterol_measurement_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_description_1",
+                        "query":  "This result covers cholesterol across its forms rather than just one carrier fraction.",
+                        "category":  "description",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "calibration",
+                        "group_id":  "total_cholesterol_function_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_description_2",
+                        "query":  "Both good and bad cholesterol contribute to this combined cholesterol measurement.",
+                        "category":  "description",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "calibration",
+                        "group_id":  "total_cholesterol_function_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_description_3",
+                        "query":  "This blood result is an overall cholesterol amount reported as a single figure.",
+                        "category":  "description",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "held_out",
+                        "group_id":  "total_cholesterol_measurement_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_supported_natural_language_1",
+                        "query":  "Which cholesterol result includes the different forms together?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "calibration",
+                        "group_id":  "total_cholesterol_function_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_supported_natural_language_2",
+                        "query":  "What result combines cholesterol carried in the good and bad forms?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "calibration",
+                        "group_id":  "total_cholesterol_function_wording"
+                    },
+                    {
+                        "id":  "total_cholesterol_supported_natural_language_3",
+                        "query":  "Which measurement reports the overall quantity of cholesterol in blood?",
+                        "category":  "supported_natural_language",
+                        "expected_document_id":  "total_cholesterol",
+                        "split":  "held_out",
+                        "group_id":  "total_cholesterol_measurement_wording"
+                    },
+                    {
+                        "id":  "unsupported_medical_01",
+                        "query":  "What does a fasting blood sugar measurement represent?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_glucose"
+                    },
+                    {
+                        "id":  "unsupported_medical_02",
+                        "query":  "Explain the amount of glucose in a blood sample.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_glucose"
+                    },
+                    {
+                        "id":  "unsupported_medical_03",
+                        "query":  "What is the blood creatinine test measuring?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_creatinine"
+                    },
+                    {
+                        "id":  "unsupported_medical_04",
+                        "query":  "I want information about serum creatinine results.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_creatinine"
+                    },
+                    {
+                        "id":  "unsupported_medical_05",
+                        "query":  "What does the sodium level in blood measure?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_sodium"
+                    },
+                    {
+                        "id":  "unsupported_medical_06",
+                        "query":  "Explain a serum potassium measurement.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_potassium"
+                    },
+                    {
+                        "id":  "unsupported_medical_07",
+                        "query":  "What is a blood calcium test used to measure?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_calcium"
+                    },
+                    {
+                        "id":  "unsupported_medical_08",
+                        "query":  "Explain the 25-hydroxy vitamin D blood test.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_vitamin_d"
+                    },
+                    {
+                        "id":  "unsupported_medical_09",
+                        "query":  "What does thyroid-stimulating hormone measure?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_thyroid"
+                    },
+                    {
+                        "id":  "unsupported_medical_10",
+                        "query":  "What information does a free thyroxine blood test provide?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_thyroid"
+                    },
+                    {
+                        "id":  "unsupported_medical_11",
+                        "query":  "Explain an alanine aminotransferase result.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_liver_enzymes"
+                    },
+                    {
+                        "id":  "unsupported_medical_12",
+                        "query":  "What is measured by the AST liver enzyme test?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_liver_enzymes"
+                    },
+                    {
+                        "id":  "unsupported_medical_13",
+                        "query":  "What is an estimated glomerular filtration rate?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_kidney_filtration"
+                    },
+                    {
+                        "id":  "unsupported_medical_14",
+                        "query":  "Explain a blood urea nitrogen test.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_kidney_filtration"
+                    },
+                    {
+                        "id":  "unsupported_medical_15",
+                        "query":  "What do the two numbers in a blood pressure reading mean?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_blood_pressure"
+                    },
+                    {
+                        "id":  "unsupported_medical_16",
+                        "query":  "What does the glycated hemoglobin A1c percentage represent?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_hba1c"
+                    },
+                    {
+                        "id":  "unsupported_medical_17",
+                        "query":  "What is a bilirubin blood measurement?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_bilirubin"
+                    },
+                    {
+                        "id":  "unsupported_medical_18",
+                        "query":  "What does a serum albumin test measure?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_albumin"
+                    },
+                    {
+                        "id":  "unsupported_medical_19",
+                        "query":  "Explain a uric acid blood test.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_uric_acid"
+                    },
+                    {
+                        "id":  "unsupported_medical_20",
+                        "query":  "What does the ferritin level tell us about iron stores?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_iron_stores"
+                    },
+                    {
+                        "id":  "unsupported_medical_21",
+                        "query":  "Explain the purpose of an iron binding capacity test.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_iron_stores"
+                    },
+                    {
+                        "id":  "unsupported_medical_22",
+                        "query":  "What is the C-reactive protein blood test?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_inflammation"
+                    },
+                    {
+                        "id":  "unsupported_medical_23",
+                        "query":  "What does erythrocyte sedimentation rate measure?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_inflammation"
+                    },
+                    {
+                        "id":  "unsupported_medical_24",
+                        "query":  "Explain the prothrombin time result.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_clotting_time"
+                    },
+                    {
+                        "id":  "unsupported_medical_25",
+                        "query":  "What does an INR measurement represent?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_clotting_time"
+                    },
+                    {
+                        "id":  "unsupported_medical_26",
+                        "query":  "What is a troponin blood test measuring?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_cardiac_marker"
+                    },
+                    {
+                        "id":  "unsupported_medical_27",
+                        "query":  "Explain the oxygen saturation percentage from a pulse oximeter.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_oxygen_saturation"
+                    },
+                    {
+                        "id":  "unsupported_medical_28",
+                        "query":  "What is mean corpuscular volume in a blood count?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unsupported_medical_red_cell_size"
+                    },
+                    {
+                        "id":  "unsupported_medical_29",
+                        "query":  "What does a serum magnesium measurement show?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_magnesium"
+                    },
+                    {
+                        "id":  "unsupported_medical_30",
+                        "query":  "Explain the phosphate level in blood.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_phosphate"
+                    },
+                    {
+                        "id":  "unsupported_medical_31",
+                        "query":  "What is measured by a blood chloride test?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_chloride"
+                    },
+                    {
+                        "id":  "unsupported_medical_32",
+                        "query":  "Explain a vitamin B12 blood measurement.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_vitamin_b12"
+                    },
+                    {
+                        "id":  "unsupported_medical_33",
+                        "query":  "What does a serum folate test measure?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_folate"
+                    },
+                    {
+                        "id":  "unsupported_medical_34",
+                        "query":  "What is the blood lipase test?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_pancreatic_enzyme"
+                    },
+                    {
+                        "id":  "unsupported_medical_35",
+                        "query":  "Explain the human chorionic gonadotropin blood test.",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_pregnancy_hormone"
+                    },
+                    {
+                        "id":  "unsupported_medical_36",
+                        "query":  "What does a cortisol blood measurement represent?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_cortisol"
+                    },
+                    {
+                        "id":  "unsupported_medical_37",
+                        "query":  "What is a prostate-specific antigen blood test?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_prostate_marker"
+                    },
+                    {
+                        "id":  "unsupported_medical_38",
+                        "query":  "Which test measures the fraction of blood volume occupied by red cells?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_red_cell_fraction"
+                    },
+                    {
+                        "id":  "unsupported_medical_39",
+                        "query":  "What does a reticulocyte percentage measure?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_reticulocytes"
+                    },
+                    {
+                        "id":  "unsupported_medical_40",
+                        "query":  "What does a hepatitis B surface antibody test measure?",
+                        "category":  "unsupported_medical",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unsupported_medical_antibodies"
+                    },
+                    {
+                        "id":  "unrelated_41",
+                        "query":  "Will it rain in the city tomorrow afternoon?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_weather"
+                    },
+                    {
+                        "id":  "unrelated_42",
+                        "query":  "How is the chance of rainfall calculated?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_weather"
+                    },
+                    {
+                        "id":  "unrelated_43",
+                        "query":  "How can I reserve a seat on an overnight train?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_rail_travel"
+                    },
+                    {
+                        "id":  "unrelated_44",
+                        "query":  "Where can I find a timetable for the railway?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_rail_travel"
+                    },
+                    {
+                        "id":  "unrelated_45",
+                        "query":  "How do I sort a list of strings in Python?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_python_programming"
+                    },
+                    {
+                        "id":  "unrelated_46",
+                        "query":  "Explain how a Python dictionary stores keys and values.",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_python_programming"
+                    },
+                    {
+                        "id":  "unrelated_47",
+                        "query":  "How do I tune an acoustic guitar?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_music"
+                    },
+                    {
+                        "id":  "unrelated_48",
+                        "query":  "What is the difference between major and minor chords?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_music"
+                    },
+                    {
+                        "id":  "unrelated_49",
+                        "query":  "How many players are on a cricket team?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_cricket"
+                    },
+                    {
+                        "id":  "unrelated_50",
+                        "query":  "Explain how overs are counted in cricket.",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_cricket"
+                    },
+                    {
+                        "id":  "unrelated_51",
+                        "query":  "How long should bread dough be left to rise?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_baking"
+                    },
+                    {
+                        "id":  "unrelated_52",
+                        "query":  "Why does yeast make bread dough expand?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "calibration",
+                        "group_id":  "unrelated_baking"
+                    },
+                    {
+                        "id":  "unrelated_53",
+                        "query":  "Which countries share a border with Portugal?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unrelated_geography"
+                    },
+                    {
+                        "id":  "unrelated_54",
+                        "query":  "Why does the Moon appear to change shape?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unrelated_astronomy"
+                    },
+                    {
+                        "id":  "unrelated_55",
+                        "query":  "When should I repot an indoor fern?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unrelated_gardening"
+                    },
+                    {
+                        "id":  "unrelated_56",
+                        "query":  "How does shutter speed affect a photograph?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unrelated_photography"
+                    },
+                    {
+                        "id":  "unrelated_57",
+                        "query":  "Who wrote Pride and Prejudice?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unrelated_literature"
+                    },
+                    {
+                        "id":  "unrelated_58",
+                        "query":  "Which tool is used to smooth a wooden board?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unrelated_carpentry"
+                    },
+                    {
+                        "id":  "unrelated_59",
+                        "query":  "What causes ocean tides?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unrelated_oceanography"
+                    },
+                    {
+                        "id":  "unrelated_60",
+                        "query":  "How do I say thank you in Japanese?",
+                        "category":  "unrelated",
+                        "expected_document_id":  null,
+                        "split":  "held_out",
+                        "group_id":  "unrelated_language"
+                    }
+                ]
+}

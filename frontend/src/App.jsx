@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import ExplanationResults from './ExplanationResults.jsx'
 
-function App() {
+function StatusPanel() {
   const [backendStatus, setBackendStatus] = useState({
     loading: true,
     message: '',
@@ -12,18 +13,16 @@ function App() {
     const fetchBackendHealth = async () => {
       try {
         const response = await fetch('/api/health')
-
         if (!response.ok) {
           throw new Error('API request failed')
         }
-
         const data = await response.json()
         setBackendStatus({
           loading: false,
           message: data.status || 'ok',
           error: '',
         })
-      } catch (error) {
+      } catch {
         setBackendStatus({
           loading: false,
           message: '',
@@ -36,22 +35,53 @@ function App() {
   }, [])
 
   return (
-    <main className="app-shell">
-      <section className="status-card">
-        <p className="eyebrow">LabLens AI</p>
-        <h1>Backend connection status</h1>
+    <section className="card status-card">
+      <p className="brand-mark">Connection</p>
+      <h2>Backend connection status</h2>
+      {backendStatus.loading ? (
+        <p>Checking backend health...</p>
+      ) : backendStatus.error ? (
+        <p className="error-text">{backendStatus.error}</p>
+      ) : (
+        <p className="status-success">
+          Connected successfully. Backend status: <strong>{backendStatus.message}</strong>
+        </p>
+      )}
+    </section>
+  )
+}
 
-        {backendStatus.loading ? (
-          <p className="status-text">Checking backend health...</p>
-        ) : backendStatus.error ? (
-          <p className="status-error">{backendStatus.error}</p>
-        ) : (
-          <p className="status-success">
-            Connected successfully. Backend status: <strong>{backendStatus.message}</strong>
-          </p>
-        )}
-      </section>
-    </main>
+function App() {
+  const [view, setView] = useState('results')
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <p className="brand-mark">LabLens AI</p>
+          <h1>Explanation results</h1>
+        </div>
+        <nav className="nav" aria-label="Primary">
+          <button
+            type="button"
+            aria-current={view === 'results' ? 'page' : undefined}
+            onClick={() => setView('results')}
+          >
+            Results
+          </button>
+          <button
+            type="button"
+            aria-current={view === 'status' ? 'page' : undefined}
+            onClick={() => setView('status')}
+          >
+            Connection
+          </button>
+        </nav>
+      </header>
+      <main className="page">
+        {view === 'results' ? <ExplanationResults /> : <StatusPanel />}
+      </main>
+    </div>
   )
 }
 
