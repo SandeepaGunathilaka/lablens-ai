@@ -7,11 +7,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo.errors import PyMongoError
 
+
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
 from agents.document_agent import router as document_agent_router  # noqa: E402
 from agents.safety_agent import router as safety_agent_router  # noqa: E402
 from api.audit import router as audit_router  # noqa: E402
+from api.retrieval import router as retrieval_router
 from api.explanation import router as explanation_router  # noqa: E402
 from database import get_audit_logs_collection, get_users_collection  # noqa: E402
 from explanation_agent.router import router  # noqa: E402
@@ -45,6 +47,7 @@ app.include_router(auth_router)
 app.include_router(document_agent_router)
 app.include_router(safety_agent_router)
 app.include_router(audit_router)
+app.include_router(retrieval_router)
 app.include_router(explanation_router)
 app.include_router(router)
 

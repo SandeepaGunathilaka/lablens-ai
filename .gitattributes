@@ -1,0 +1,3 @@
+# Retrieval provenance hashes raw bytes; keep inputs identical on every platform.
+/backend/data/knowledge_base/*.json text eol=lf
+/backend/tests/fixtures/retrieval/*.json text eol=lf

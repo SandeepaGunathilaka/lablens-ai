@@ -1,0 +1,23 @@
+{
+  "id": "total_cholesterol",
+  "test_name": "Total Cholesterol",
+  "aliases": [
+    "Cholesterol Total",
+    "Total Chol",
+    "TC"
+  ],
+  "report_type": "LIPID_PROFILE",
+  "title": "Total Cholesterol Test",
+
+  "definition": "Total cholesterol is the overall amount of cholesterol present in the blood.",
+
+  "what_it_measures": "The total cholesterol result measures cholesterol across its different forms, including HDL and LDL.",
+
+  "general_information": "A total cholesterol result is assessed in the context of age, family history, lifestyle, and other heart disease risk factors.",
+  "source": {
+    "publisher": "MedlinePlus",
+    "title": "Cholesterol Levels",
+    "url": "https://medlineplus.gov/lab-tests/cholesterol-levels/",
+    "accessed_date": "2026-09-28"
+  }
+}

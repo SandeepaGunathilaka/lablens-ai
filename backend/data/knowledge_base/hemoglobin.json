@@ -1,0 +1,20 @@
+{
+  "id": "hemoglobin",
+  "test_name": "Hemoglobin",
+  "aliases": [
+    "Hb",
+    "Hgb",
+    "Haemoglobin"
+  ],
+  "report_type": "CBC",
+  "title": "Hemoglobin Test",
+  "definition": "Hemoglobin is an iron-containing protein found in red blood cells that helps carry oxygen from the lungs to the body's tissues.",
+  "what_it_measures": "A hemoglobin test measures the amount of hemoglobin in a blood sample.",
+  "general_information": "Hemoglobin testing is commonly included as part of a complete blood count. LabLens uses this information only for educational explanation and does not use it to diagnose a condition.",
+  "source": {
+    "publisher": "MedlinePlus",
+    "title": "Hemoglobin Test",
+    "url": "https://medlineplus.gov/lab-tests/hemoglobin-test/",
+    "accessed_date": "2026-09-28"
+  }
+}
