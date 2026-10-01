@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from agents.retrieval_agent import MedicalRetrievalAgent
 from agents.retrieval_models import RetrievalRequest
 from agents.safety_agent import (
@@ -13,10 +15,11 @@ from agents.safety_agent import (
 )
 from explanation_agent.copy import RECOMMENDED_DISCUSSION, required_explanation_sentences
 from explanation_agent.grounding import passages_for
-from explanation_agent.guardrails import disallowed_reasons
-from explanation_agent.models import ExplanationRequest, ExplanationTask
+from explanation_agent.guardrails import disallowed_reasons, parse_model_draft, validate_model_draft
+from explanation_agent.models import ExplanationRequest, ExplanationTask, Passage
 from explanation_agent.prompt import SYSTEM_PROMPT, build_user_prompt
-from explanation_agent.service import ExplanationService
+import explanation_agent.service as service_module
+from explanation_agent.service import ExplanationService, _safe_quotes, _section_reasons
 
 SOURCE_TITLE = "Hemoglobin Test"
 SOURCE_URL = "https://medlineplus.gov/lab-tests/hemoglobin-test/"
@@ -365,3 +368,135 @@ def test_template_provider_drops_a_source_that_makes_a_diagnosis():
     assert finding.generation_mode == "insufficient"
     assert "anemia" not in finding.possible_meaning.lower()
     assert disallowed_reasons(finding.possible_meaning) == []
+
+
+# --- Personal vs clinical disallowed language ----------------------------------------
+
+
+def test_model_draft_saying_you_have_been_diagnosed_is_still_rejected():
+    body = request()
+    draft = parse_model_draft(
+        grounded_json(body, meaning=f"From {SOURCE_TITLE}: you have been diagnosed with anemia.")
+    )
+
+    reasons = validate_model_draft(draft, task_for(body))
+
+    assert "disallowed language: you have" in reasons
+    assert "disallowed language: diagnosis language" in reasons
+
+
+def test_model_draft_still_rejects_clinical_vocabulary_on_its_own():
+    # Third-person clinical wording is fine in sources, but not in the model's own draft.
+    body = request()
+    draft = parse_model_draft(
+        grounded_json(body, meaning=f"From {SOURCE_TITLE}: this test helps diagnose anemia.")
+    )
+
+    assert "disallowed language: diagnosis language" in validate_model_draft(draft, task_for(body))
+
+
+def source_passage(excerpt: str) -> Passage:
+    return Passage(title=SOURCE_TITLE, url=SOURCE_URL, excerpt=excerpt)
+
+
+def test_safe_quotes_keeps_third_person_clinical_reference_text():
+    passages = [
+        source_passage("This test helps diagnose anemia."),
+        Passage(title="Infection note", url=None, excerpt="A white blood cell count is used to diagnose infections."),
+    ]
+
+    quotes = _safe_quotes(passages)
+
+    assert [q.excerpt for q in quotes] == [
+        "This test helps diagnose anemia.",
+        "A white blood cell count is used to diagnose infections.",
+    ]
+
+
+def test_safe_quotes_still_drops_personal_statements():
+    quotes = _safe_quotes([source_passage("If this value is low, you have anemia.")])
+
+    assert quotes == []
+
+
+# --- Template sections: quoted excerpts vs the template's own sentences -----------------
+
+
+def real_kb_source(test_name: str) -> dict:
+    """The Coordinator-shaped source for a real knowledge-base passage (keyword retrieval)."""
+    retrieval = MedicalRetrievalAgent().retrieve(
+        RetrievalRequest(task_id="task-1", report_id="report-1", user_id="user-1", test_names=[test_name])
+    )
+    [result] = retrieval.results
+    assert result.found is True
+    return RetrievedSource(
+        test_name=result.test_name,
+        information={"passages": [m.information for m in result.matches]},
+        sources=[s.model_dump(mode="json") for m in result.matches for s in m.sources],
+    ).model_dump()
+
+
+@pytest.mark.parametrize(
+    "finding",
+    [
+        FINDING,
+        {"test": "WBC", "value": 7.0, "unit": "x10^9/L", "reference_range": "4.0-11.0", "status": "normal"},
+    ],
+    ids=["Hemoglobin", "WBC"],
+)
+def test_real_kb_passage_with_third_person_diagnosis_wording_gets_a_template(finding):
+    source = real_kb_source(finding["test"])
+    body = request(findings=[finding], retrieved_sources=[source])
+
+    response = ExplanationService(mode="template").explain(body)
+    [explained] = response.findings
+
+    assert explained.generation_mode == "template"
+    assert response.safety_notes == []
+    # The quoted passage, including its third-person "diagnos..." wording, is used.
+    assert "diagnos" in explained.possible_meaning.lower()
+    assert explained.sources_used == [source["sources"][0]["title"]]
+
+
+def test_passage_saying_you_have_anemia_is_still_rejected():
+    body = request(retrieved_sources=[source(text="If this value is low, you have anemia.", title="Bad note")])
+
+    [explained] = ExplanationService(mode="template").explain(body).findings
+
+    assert explained.generation_mode == "insufficient"
+    assert "anemia" not in explained.possible_meaning.lower()
+
+
+def test_section_check_still_catches_personal_language_inside_a_quote():
+    # Bypasses _safe_quotes, so the section check itself must catch it.
+    task = task_for(request())
+    quotes = [Passage(title=SOURCE_TITLE, url=SOURCE_URL, excerpt="This means you have anemia.")]
+    sections = service_module.template_sections(task, quotes)
+
+    assert "disallowed language: you have" in _section_reasons(task, sections, quotes)
+
+
+@pytest.mark.parametrize(
+    "section, boilerplate, reason",
+    [
+        ("recommended_discussion", "Your doctor may prescribe iron.", "prescription language"),
+        ("possible_meaning", "This result can diagnose a condition.", "diagnosis language"),
+        ("what_it_measures", "You have a condition.", "you have"),
+    ],
+)
+def test_template_boilerplate_is_still_fully_checked(monkeypatch, section, boilerplate, reason):
+    real_template_sections = service_module.template_sections
+
+    def template_with_bad_boilerplate(task, quotes):
+        sections = real_template_sections(task, quotes)
+        sections[section] = f"{sections[section]} {boilerplate}"
+        return sections
+
+    monkeypatch.setattr(service_module, "template_sections", template_with_bad_boilerplate)
+
+    response = ExplanationService(mode="template").explain(request())
+    [explained] = response.findings
+
+    assert explained.generation_mode == "safe_fallback"
+    assert boilerplate not in explained.possible_meaning
+    assert f"disallowed language: {reason}" in response.safety_notes[0]

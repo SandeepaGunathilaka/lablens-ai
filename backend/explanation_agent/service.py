@@ -1,7 +1,7 @@
 """Generate a grounded explanation per finding, or an explicit safe response when it cannot."""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal, Protocol
 
 from explanation_agent.copy import (
@@ -16,6 +16,7 @@ from explanation_agent.guardrails import (
     DraftParseError,
     disallowed_reasons,
     parse_model_draft,
+    personal_disallowed_reasons,
     validate_model_draft,
 )
 from explanation_agent.llm import (
@@ -97,7 +98,7 @@ class ExplanationService:
             )
         sections = template_sections(task, quotes)
         titles = [quote.title for quote in quotes]
-        reasons = _section_reasons(sections, titles)
+        reasons = _section_reasons(task, sections, quotes)
         if reasons:
             return _fallback(task, reasons)
         return _explained(task, sections, titles, "template"), None
@@ -183,16 +184,24 @@ def _safe_quotes(passages: list[Passage]) -> list[Passage]:
         excerpt = " ".join(passage.excerpt.split())
         if len(excerpt) > _TEMPLATE_EXCERPT_LIMIT:
             excerpt = excerpt[:_TEMPLATE_EXCERPT_LIMIT].rstrip() + "..."
-        if disallowed_reasons(f"{passage.title} {excerpt}"):
+        # Reference text may use clinical words in the third person; only statements
+        # about the reader disqualify an excerpt.
+        if personal_disallowed_reasons(f"{passage.title} {excerpt}"):
             continue
         quotes.append(Passage(title=passage.title, url=passage.url, excerpt=excerpt))
     return quotes
 
 
-def _section_reasons(sections: dict[str, str], titles: list[str]) -> list[str]:
+def _section_reasons(task: ExplanationTask, sections: dict[str, str], quotes: list[Passage]) -> list[str]:
     body = "\n".join(sections.values())
-    reasons = disallowed_reasons(body)
-    for title in titles:
-        if title not in body:
-            reasons.append(f"the draft does not mention the retrieved source: {title}")
+    # The template's own sentences (titles included), rebuilt with every excerpt
+    # blanked out, get the full check. The quoted excerpts are third-person reference
+    # text, so they only get the personal check.
+    authored = "\n".join(template_sections(task, [replace(q, excerpt="") for q in quotes]).values())
+    reasons = disallowed_reasons(authored)
+    for quote in quotes:
+        reasons.extend(r for r in personal_disallowed_reasons(quote.excerpt) if r not in reasons)
+    for quote in quotes:
+        if quote.title not in body:
+            reasons.append(f"the draft does not mention the retrieved source: {quote.title}")
     return reasons
