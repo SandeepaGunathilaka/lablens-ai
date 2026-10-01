@@ -1,0 +1,129 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * LabLens "clinical editorial" tokens, generated from the Stitch design system
+ * (project "LabLens AI"). Warm paper background, deep teal primary, burnt
+ * sienna reserved for out-of-range markers.
+ */
+:root {
+  --radius: 0.5rem;
+
+  --background: #f7f5ef;
+  --foreground: #1b1f1e;
+  --card: #ffffff;
+  --card-foreground: #1b1f1e;
+  --popover: #ffffff;
+  --popover-foreground: #1b1f1e;
+  --primary: #0f5e5a;
+  --primary-foreground: #f4fffd;
+  --secondary: #efede5;
+  --secondary-foreground: #1b1f1e;
+  --muted: #efede5;
+  --muted-foreground: #5b6360;
+  --accent: #e4efec;
+  --accent-foreground: #0a4744;
+  --destructive: #a13a32;
+  --border: #e3ded4;
+  --input: #d8d3c7;
+  --ring: #0f5e5a;
+
+  /* LabLens-specific roles */
+  --paper: #f1efe7;
+  --flag: #b4532a;
+  --flag-soft: #fbe6dc;
+  --ok: #2f6b45;
+  --ok-soft: #e1f0e4;
+}
+
+@theme inline {
+  --font-serif: 'Newsreader', ui-serif, Georgia, serif;
+  --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-label: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-paper: var(--paper);
+  --color-flag: var(--flag);
+  --color-flag-soft: var(--flag-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'ss01';
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-serif;
+    text-wrap: balance;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Small uppercase label used across the editorial layout. */
+  .eyebrow {
+    @apply font-label text-[11px] font-semibold tracking-[0.12em] uppercase;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}

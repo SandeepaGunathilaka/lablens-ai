@@ -234,6 +234,8 @@ build/
 # IDE 
 .vscode/ 
 .idea/
+.agents/
+.claude/
 
 # Generated retrieval evaluation reports
 /backend/evaluation_results/

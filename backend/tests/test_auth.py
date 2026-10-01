@@ -40,3 +40,25 @@ def test_register_weak_password_rejected(client, users, password):
 
     assert response.status_code == 422
     assert users.count_documents({}) == 0
+
+
+def test_me_returns_public_profile(client, users):
+    client.post("/auth/register", json=VALID_USER)
+    token = client.post(
+        "/auth/login", json={"email": VALID_USER["email"], "password": VALID_USER["password"]}
+    ).json()["access_token"]
+
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {"user_id", "name", "email"}  # no password hash leaked
+    assert body["name"] == "Ada Lovelace"
+
+
+def test_me_requires_token(client):
+    assert client.get("/auth/me").status_code == 401
+
+
+def test_me_rejects_token_for_deleted_user(client, auth_headers):
+    assert client.get("/auth/me", headers=auth_headers("no-such-user")).status_code == 401
