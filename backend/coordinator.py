@@ -5,12 +5,13 @@ Pipeline: Document -> status (computed here, in code) -> Retrieval -> Explanatio
 rejects it. Only a Safety-approved draft is ever returned to the caller.
 
 Agents are called as plain Python functions through small, injectable service
-interfaces, so tests can pass fakes and unmerged agents can use placeholders.
+interfaces, so tests can pass fakes instead of the real agents.
 """
 
 import logging
 import re
 import uuid
+from collections import Counter
 from collections.abc import Callable
 from functools import lru_cache
 from typing import Literal
@@ -31,6 +32,13 @@ from agents.safety_agent import (
     validate_draft,
 )
 from database import get_audit_logs_collection
+from explanation_agent.models import (
+    ExplainedFinding,
+    ExplanationFinding,
+    ExplanationRequest,
+    ExplanationResponse,
+)
+from explanation_agent.service import ExplanationService, build_explanation_service
 from logging_service import log_event
 
 logger = logging.getLogger(__name__)
@@ -79,35 +87,6 @@ Status = Literal["low", "normal", "high"]
 # --- Models ----------------------------------------------------------------------
 
 
-class Finding(BaseModel):
-    """One extracted value plus its code-computed status: the Explanation service's input."""
-
-    test: str
-    value: float
-    unit: str | None = None
-    reference_range: str | None = None
-    status: Status | None = None
-
-
-# MIRRORS Member 3's Explanation Agent models. Replace these two classes with an
-# import from the Explanation Agent once that branch is merged.
-class ExplainedFinding(BaseModel):
-    test_name: str
-    result: str
-    status: str | None = None
-    what_it_measures: str = ""
-    explanation: str = ""
-    possible_meaning: str = ""
-    recommended_discussion: str = ""
-
-
-class ExplanationOutput(BaseModel):
-    findings: list[ExplainedFinding]
-    # Safety info from the Explanation Agent. Not shown to the user: only text that
-    # passed the Safety Agent is ever returned.
-    safety_notes: list[str] = Field(default_factory=list)
-
-
 class AnalyzedLabResult(BaseModel):
     """An extracted value as returned to the caller: original numbers plus status and warning."""
 
@@ -138,7 +117,8 @@ class CoordinatorResult(BaseModel):
 DocumentService = Callable[[str, bytes], DocumentExtractionResponse]
 # Same shape as MedicalRetrievalAgent.retrieve, so an agent's bound method can be passed in.
 RetrievalService = Callable[[RetrievalRequest], RetrievalResponse]
-ExplanationService = Callable[[list[Finding], list[RetrievedSource], str | None], ExplanationOutput]
+# Same shape as ExplanationService.explain, so a service's bound method can be passed in.
+ExplanationFn = Callable[[ExplanationRequest], ExplanationResponse]
 SafetyService = Callable[[SafetyValidateRequest], ApprovedResponse | RejectedResponse]
 
 
@@ -172,28 +152,22 @@ def retrieval_response_to_sources(response: RetrievalResponse) -> list[Retrieved
     return list(sources.values())
 
 
-def placeholder_explanation(
-    findings: list[Finding], retrieved_sources: list[RetrievedSource], instruction: str | None
-) -> ExplanationOutput:
-    """PLACEHOLDER until Member 3's Explanation Agent is merged.
+@lru_cache(maxsize=1)
+def _default_explanation_service() -> ExplanationService:
+    # Built once on first use and reused. Reads EXPLANATION_PROVIDER / GEMINI_API_KEY;
+    # without a key it runs in "unavailable" mode and returns safe text, never raising.
+    return build_explanation_service()
 
-    Restates only the patient's own values; makes no medical claims.
-    """
-    explained = []
-    for finding in findings:
-        value_text = _value_text(finding.value, finding.unit)
-        sentence = f"Your {finding.test} value is {value_text}"
-        if finding.reference_range:
-            sentence += f"; the range on your report is {finding.reference_range}"
-        explained.append(
-            ExplainedFinding(
-                test_name=finding.test,
-                result=value_text,
-                status=finding.status,
-                explanation=sentence + ".",
-            )
-        )
-    return ExplanationOutput(findings=explained)
+
+def default_explanation(request: ExplanationRequest) -> ExplanationResponse:
+    """The real Explanation Agent (Member 3)."""
+    return _default_explanation_service().explain(request)
+
+
+def rejection_note(reason: str) -> str:
+    """One rejection_feedback entry: which Safety check failed and what to change."""
+    instruction = REGENERATION_INSTRUCTIONS.get(reason, DEFAULT_REGENERATION_INSTRUCTION)
+    return f"Safety check '{reason}' failed. {instruction}"
 
 
 # --- Status calculation (always in code, never by the LLM) ----------------------
@@ -253,37 +227,46 @@ def _value_text(value: float, unit: str | None) -> str:
     return f"{number} {unit}" if unit else number
 
 
-def _result_line(finding: Finding) -> str:
-    """The value/range/status sentence, built from the Document Agent's numbers and our status."""
-    line = f"{finding.test}: your result is {_value_text(finding.value, finding.unit)}"
-    if finding.reference_range:
-        line += f"; the range on your report is {finding.reference_range}"
-    if finding.status:
-        line += f", which is {finding.status}"
+def _result_line(result: AnalyzedLabResult, result_text: str) -> str:
+    """The value/range/status sentence. Status is always the one computed in code."""
+    line = f"{result.test}: your result is {result_text}"
+    if result.reference_range:
+        line += f"; the range on your report is {result.reference_range}"
+    if result.status:
+        line += f", which is {result.status}"
     return line + "."
 
 
+def _match_explained(
+    index: int, result: AnalyzedLabResult, explained: list[ExplainedFinding]
+) -> ExplainedFinding | None:
+    """The explanation for this result: by position (the agent keeps request order), else by name."""
+    if index < len(explained) and explained[index].test_name.lower() == result.test.lower():
+        return explained[index]
+    return next((e for e in explained if e.test_name.lower() == result.test.lower()), None)
+
+
 def build_draft_response(
-    findings: list[Finding],
+    results: list[AnalyzedLabResult],
     explained: list[ExplainedFinding],
     tests_with_sources: set[str],
 ) -> str:
     """Join every finding into one draft and append the standard DISCLAIMER.
 
-    Result and status always come from code. Only the prose fields come from the
-    Explanation service, and only for tests that have retrieved sources; the others
-    get INSUFFICIENT_INFORMATION_MESSAGE instead.
+    The result text comes from the explanation's ``result`` field and the status from
+    code. Tests without retrieved sources get INSUFFICIENT_INFORMATION_MESSAGE, and the
+    agent's prose for them is only used if the agent itself marked it insufficient (its
+    fixed, claim-free wording): generated text without evidence is never included.
     """
-    explained_by_test = {}
-    for item in explained:
-        explained_by_test.setdefault(item.test_name.lower(), item)
-
     sections = []
-    for finding in findings:
-        parts = [_result_line(finding)]
-        if finding.test.lower() not in tests_with_sources:
+    for index, result in enumerate(results):
+        item = _match_explained(index, result, explained)
+        result_text = item.result if item else _value_text(result.value, result.unit)
+        parts = [_result_line(result, result_text)]
+        has_sources = result.test.lower() in tests_with_sources
+        if not has_sources:
             parts.append(INSUFFICIENT_INFORMATION_MESSAGE)
-        elif item := explained_by_test.get(finding.test.lower()):
+        if item and (has_sources or item.insufficient_information):
             parts += [
                 item.what_it_measures,
                 item.explanation,
@@ -304,14 +287,14 @@ def analyze_report(
     *,
     document_service: DocumentService | None = None,
     retrieval_service: RetrievalService | None = None,
-    explanation_service: ExplanationService | None = None,
+    explanation_service: ExplanationFn | None = None,
     safety_service: SafetyService | None = None,
     audit_logs: Collection | None = None,
 ) -> CoordinatorResult:
     """Run an uploaded report through the full pipeline. Never raises for agent failures."""
     document_service = document_service or extract_document
     retrieval_service = retrieval_service or default_retrieval
-    explanation_service = explanation_service or placeholder_explanation
+    explanation_service = explanation_service or default_explanation
     safety_service = safety_service or validate_draft
     # `is None`, not `or`: pymongo collections refuse to be used as a true/false value.
     if audit_logs is None:
@@ -370,10 +353,6 @@ def analyze_report(
         )
         for r in document.results
     ]
-    findings = [
-        Finding(test=r.test, value=r.value, unit=r.unit, reference_range=r.reference_range, status=r.status)
-        for r in results
-    ]
     audit(
         "coordinator",
         "compute_status",
@@ -383,10 +362,10 @@ def analyze_report(
     )
 
     # 3. Retrieval stage
-    requested = {f.test.lower() for f in findings}
+    requested = {r.test.lower() for r in results}
     try:
         request = RetrievalRequest(
-            task_id=task_id, report_id=report_id, user_id=user_id, test_names=[f.test for f in findings]
+            task_id=task_id, report_id=report_id, user_id=user_id, test_names=[r.test for r in results]
         )
         response = RetrievalResponse.model_validate(retrieval_service(request))
         # Evidence tagged for another task/report/user must never reach this report.
@@ -411,25 +390,45 @@ def analyze_report(
         audit("retrieval_agent", "retrieve", "error", error_type=type(exc).__name__)
         retrieved_sources, tests_with_sources = [], set()
 
-    # Only tests with evidence are sent for explanation, so nothing is explained from thin air.
-    findings_to_explain = [f for f in findings if f.test.lower() in tests_with_sources]
     common = {"report_type": document.report_type, "results": results}
 
     # 4-6. Explanation -> draft -> Safety, with regeneration on rejection.
-    instruction = None
+    # Every finding is sent each time, with all sources; the Explanation Agent matches
+    # sources to findings itself and answers "insufficient" for tests without any.
+    rejection_feedback: list[str] = []
     for attempt in range(1, MAX_EXPLANATION_RETRIES + 2):
-        explained: list[ExplainedFinding] = []
-        if findings_to_explain:
-            try:
-                output = explanation_service(findings_to_explain, retrieved_sources, instruction)
-                explained = ExplanationOutput.model_validate(output).findings
-                audit("explanation_agent", "explain", "success", attempt=attempt)
-            except Exception as exc:
-                logger.exception("Explanation failed for task %s (attempt %s)", task_id, attempt)
-                audit("explanation_agent", "explain", "error", attempt=attempt, error_type=type(exc).__name__)
-                return finish("fallback", message=EXPLANATION_UNAVAILABLE_MESSAGE, **common)
+        try:
+            explanation_request = ExplanationRequest(
+                task_id=task_id,
+                report_id=report_id,
+                user_id=user_id,
+                findings=[
+                    ExplanationFinding(
+                        test=r.test, value=r.value, unit=r.unit, reference_range=r.reference_range, status=r.status
+                    )
+                    for r in results
+                ],
+                retrieved_sources=retrieved_sources,
+                rejection_feedback=list(rejection_feedback),
+            )
+            explanation = ExplanationResponse.model_validate(explanation_service(explanation_request))
+            if (explanation.task_id, explanation.report_id, explanation.user_id) != (task_id, report_id, user_id):
+                raise ValueError("Explanation response IDs do not match the request")
+            explained = explanation.findings
+            audit(
+                "explanation_agent",
+                "explain",
+                "success",
+                attempt=attempt,
+                generation_modes=dict(sorted(Counter(f.generation_mode for f in explained).items())),
+            )
+        except Exception as exc:
+            # A real failure, not the agent's normal "unavailable" mode (which returns safe text).
+            logger.exception("Explanation failed for task %s (attempt %s)", task_id, attempt)
+            audit("explanation_agent", "explain", "error", attempt=attempt, error_type=type(exc).__name__)
+            return finish("fallback", message=EXPLANATION_UNAVAILABLE_MESSAGE, **common)
 
-        draft = build_draft_response(findings, explained, tests_with_sources)
+        draft = build_draft_response(results, explained, tests_with_sources)
 
         try:
             decision = safety_service(
@@ -454,10 +453,8 @@ def analyze_report(
 
         reason = getattr(decision, "reason", "unknown")
         audit("safety_agent", "validate", "rejected", attempt=attempt, reason=reason)
-        # Regenerating can't help if nothing came from the Explanation service.
-        if not findings_to_explain:
-            break
-        instruction = REGENERATION_INSTRUCTIONS.get(reason, DEFAULT_REGENERATION_INSTRUCTION)
+        # Each rejection is added to the feedback the next explanation attempt receives.
+        rejection_feedback.append(rejection_note(reason))
 
     # Every attempt was rejected: return the fallback, never the unapproved draft.
     return finish("fallback", message=FALLBACK_MESSAGE, **common)

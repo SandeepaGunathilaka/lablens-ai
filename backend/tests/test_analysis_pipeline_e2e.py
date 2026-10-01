@@ -20,9 +20,13 @@ Why this exists alongside tests/test_analysis_api.py:
 
 Real: authentication, upload handling, Document Agent (selectable-text PDF, so no
 Tesseract), MedicalRetrievalAgent, Safety Agent and audit logging (on mongomock).
-Faked: only HybridRetriever and the Explanation service, which is intentionally not
-real yet.
+Faked: HybridRetriever, and the Explanation service (a stub that speaks the real
+ExplanationRequest/ExplanationResponse contract), so these tests control exactly what
+text the Safety Agent sees, including an unsafe draft. The real ExplanationService
+is covered in tests/test_coordinator.py.
 """
+
+from types import SimpleNamespace
 
 import pymupdf as fitz
 import pytest
@@ -32,7 +36,8 @@ from agents.hybrid_retriever import HybridRetrievalResult
 from agents.knowledge_base import KnowledgeDocument, KnowledgeSource
 from agents.retrieval_agent import MedicalRetrievalAgent
 from agents.safety_agent import DISCLAIMER
-from coordinator import FALLBACK_MESSAGE, INSUFFICIENT_INFORMATION_MESSAGE, ExplainedFinding, ExplanationOutput
+from coordinator import FALLBACK_MESSAGE, INSUFFICIENT_INFORMATION_MESSAGE
+from explanation_agent.models import ExplainedFinding, ExplanationResponse
 
 ANALYZE_URL = "/api/analyze-report"
 
@@ -86,27 +91,42 @@ class FakeHybridRetriever:
 
 
 class StubExplanation:
-    """Deterministic, clearly fake explanation text with every ExplainedFinding field filled."""
+    """Deterministic, clearly fake explanation text with every ExplainedFinding field filled.
+
+    Like a model, it writes text for every finding, even ones without sources; the
+    Coordinator must keep that ungrounded text out of the draft.
+    """
 
     def __init__(self):
         self.calls = []
 
-    def __call__(self, findings, retrieved_sources, instruction):
-        self.calls.append({"tests": [f.test for f in findings], "instruction": instruction})
-        return ExplanationOutput(
+    def __call__(self, request):
+        self.calls.append({"tests": [f.test for f in request.findings], "rejection_feedback": request.rejection_feedback})
+        return ExplanationResponse(
+            task_id=request.task_id,
+            report_id=request.report_id,
+            user_id=request.user_id,
             findings=[
                 ExplainedFinding(
                     test_name=f.test,
-                    result=str(f.value),
+                    result=f"{f.value:g} {f.unit or ''}".strip(),
                     status=f.status,
                     what_it_measures=f"{STUB_MARKER} {f.test} is a protein in red blood cells that carries oxygen.",
                     explanation=f"{STUB_MARKER} This is placeholder explanation text for testing.",
                     possible_meaning=f"{STUB_MARKER} A result outside the range on your report is worth asking about.",
                     recommended_discussion=f"{STUB_MARKER} Ask your doctor what this result means for you.",
+                    insufficient_information=False,
+                    sources_used=[],
+                    generation_mode="llm",
                 )
-                for f in findings
-            ]
+                for f in request.findings
+            ],
         )
+
+
+def use_explanation_stub(monkeypatch, stub):
+    """Make the Coordinator's real default_explanation call the stub instead of a model."""
+    monkeypatch.setattr(coordinator, "_default_explanation_service", lambda: SimpleNamespace(explain=stub))
 
 
 @pytest.fixture
@@ -120,7 +140,7 @@ def hybrid(monkeypatch):
 @pytest.fixture
 def explanation(monkeypatch):
     stub = StubExplanation()
-    monkeypatch.setattr(coordinator, "placeholder_explanation", stub)
+    use_explanation_stub(monkeypatch, stub)
     return stub
 
 
@@ -143,9 +163,9 @@ def test_analyze_report_runs_real_pipeline_end_to_end(client, auth_headers, audi
         ("Platelets", 250.0, "normal"),
     ]
 
-    # Real retrieval asked about both tests; only the found one was sent for explanation.
+    # Real retrieval asked about both tests; both were sent for explanation, once.
     assert hybrid.queries == ["Hemoglobin", "Platelets"]
-    assert explanation.calls == [{"tests": ["Hemoglobin"], "instruction": None}]
+    assert explanation.calls == [{"tests": ["Hemoglobin", "Platelets"], "rejection_feedback": []}]
 
     final = body["final_response"]
     assert final.endswith(DISCLAIMER)
@@ -154,7 +174,7 @@ def test_analyze_report_runs_real_pipeline_end_to_end(client, auth_headers, audi
     assert hemoglobin_section.startswith("Hemoglobin:")
     assert STUB_MARKER in hemoglobin_section
     assert INSUFFICIENT_INFORMATION_MESSAGE not in hemoglobin_section
-    # Not-found path: no explanation, just the insufficient-information message.
+    # Not-found path: the stub's ungrounded text is dropped; the insufficient-information message is used.
     assert platelets_section.startswith("Platelets:")
     assert INSUFFICIENT_INFORMATION_MESSAGE in platelets_section
     assert STUB_MARKER not in platelets_section
@@ -171,6 +191,7 @@ def test_analyze_report_runs_real_pipeline_end_to_end(client, auth_headers, audi
     ]
     assert {(e["report_id"], e["user_id"]) for e in entries} == {(body["report_id"], "user-1")}
     assert entries[2]["details"] == {"tests_requested": 2, "tests_with_sources": 1}
+    assert entries[3]["details"] == {"attempt": 1, "generation_modes": {"llm": 2}}
     assert audit_logs.count_documents({}) == len(entries)  # nothing logged under another task
 
 
@@ -189,8 +210,8 @@ UNSUPPORTED_CLAIM = "Low values are commonly caused by kidney disease."
 class UnsafeStubExplanation(StubExplanation):
     """Same stub, but every explanation makes a claim the retrieved source doesn't support."""
 
-    def __call__(self, findings, retrieved_sources, instruction):
-        output = super().__call__(findings, retrieved_sources, instruction)
+    def __call__(self, request):
+        output = super().__call__(request)
         for finding in output.findings:
             finding.explanation = f"{STUB_MARKER} {UNSUPPORTED_CLAIM}"
         return output
@@ -199,7 +220,7 @@ class UnsafeStubExplanation(StubExplanation):
 @pytest.fixture
 def unsafe_explanation(monkeypatch):
     stub = UnsafeStubExplanation()
-    monkeypatch.setattr(coordinator, "placeholder_explanation", stub)
+    use_explanation_stub(monkeypatch, stub)
     return stub
 
 
@@ -224,6 +245,8 @@ def test_analyze_report_unsupported_claim_is_rejected_and_falls_back(
 
     # The real Safety Agent rejected every attempt (1 + 2 regenerations) for the unsupported claim.
     assert len(unsafe_explanation.calls) == 3
+    # Each retry carried the growing list of rejection reasons.
+    assert [len(c["rejection_feedback"]) for c in unsafe_explanation.calls] == [0, 1, 2]
     safety_entries = list(
         audit_logs.find({"task_id": body["task_id"], "agent": "safety_agent"}).sort([("timestamp", 1), ("_id", 1)])
     )

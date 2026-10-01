@@ -1,5 +1,6 @@
 import pytest
 
+import coordinator
 from agents.document_agent import DocumentExtractionError, DocumentExtractionResponse, ExtractedLabResult
 from agents.hybrid_retriever import HybridRetrievalResult
 from agents.knowledge_base import KnowledgeDocument, KnowledgeSource
@@ -11,15 +12,15 @@ from coordinator import (
     FALLBACK_MESSAGE,
     INSUFFICIENT_INFORMATION_MESSAGE,
     NEEDS_VERIFICATION_WARNING,
-    REGENERATION_INSTRUCTIONS,
-    ExplainedFinding,
-    ExplanationOutput,
-    Finding,
+    AnalyzedLabResult,
     analyze_report,
     build_draft_response,
     compute_status,
+    rejection_note,
     retrieval_response_to_sources,
 )
+from explanation_agent.models import ExplainedFinding, ExplanationResponse
+from explanation_agent.service import ExplanationService
 
 HEMOGLOBIN = ExtractedLabResult(
     test="Hemoglobin", value=11.2, unit="g/dL", reference_range="12.0-15.5",
@@ -87,30 +88,63 @@ def real_retrieval(*documents, error=None):
 
 
 class FakeExplanation:
-    """Returns the given texts in order (the last one repeats) and records each call."""
+    """Acts like a model that writes the given texts in order (the last one repeats).
+
+    It answers every finding with generated ("llm") text, even ones with no sources,
+    so tests can check the Coordinator never uses ungrounded text. Records each request.
+    """
 
     def __init__(self, *texts):
         self.texts = list(texts)
-        self.calls = []
+        self.requests = []
 
-    def __call__(self, findings, retrieved_sources, instruction):
-        self.calls.append({"findings": findings, "sources": retrieved_sources, "instruction": instruction})
-        text = self.texts[min(len(self.calls), len(self.texts)) - 1]
-        return ExplanationOutput(
+    def __call__(self, request):
+        self.requests.append(request)
+        text = self.texts[min(len(self.requests), len(self.texts)) - 1]
+        return ExplanationResponse(
+            task_id=request.task_id,
+            report_id=request.report_id,
+            user_id=request.user_id,
             findings=[
-                ExplainedFinding(test_name=f.test, result=str(f.value), status=f.status, explanation=text)
-                for f in findings
-            ]
+                ExplainedFinding(
+                    test_name=f.test,
+                    result=f"{f.value:g} {f.unit or ''}".strip(),
+                    status=f.status,
+                    what_it_measures="",
+                    explanation=text,
+                    possible_meaning="",
+                    recommended_discussion="",
+                    insufficient_information=False,
+                    sources_used=[],
+                    generation_mode="llm",
+                )
+                for f in request.findings
+            ],
         )
+
+
+def template_explanation():
+    """Member 3's real ExplanationService in deterministic template mode: no model, no key."""
+    return ExplanationService(mode="template").explain
 
 
 def raising(*args, **kwargs):
     raise RuntimeError("service is down")
 
 
+@pytest.fixture(autouse=True)
+def never_call_real_explanation_model(monkeypatch):
+    """Fail loudly if a test reaches the real (Gemini-backed) default Explanation service."""
+    def forbidden():
+        raise AssertionError("tests must inject an explanation_service")
+
+    monkeypatch.setattr(coordinator, "_default_explanation_service", forbidden)
+
+
 def run(audit_logs, **services):
     services.setdefault("document_service", fake_document(HEMOGLOBIN))
     services.setdefault("retrieval_service", real_retrieval(HEMOGLOBIN_DOCUMENT))
+    services.setdefault("explanation_service", template_explanation())
     return analyze_report("report.pdf", b"%PDF-fake", "user-1", audit_logs=audit_logs, **services)
 
 
@@ -159,18 +193,74 @@ def test_compute_status_is_none_when_range_missing_or_unparseable(reference_rang
 # --- Draft --------------------------------------------------------------------------
 
 
-def test_draft_ends_with_disclaimer_and_uses_code_computed_status():
-    finding = Finding(test="Hemoglobin", value=11.2, unit="g/dL", reference_range="12.0-15.5", status="low")
-    # The explanation claims "normal"; the draft must use the status computed in code.
-    explained = [ExplainedFinding(test_name="Hemoglobin", result="11.2", status="normal", explanation=SAFE_TEXT)]
+def analyzed(test="Hemoglobin", value=11.2, unit="g/dL", reference_range="12.0-15.5", status="low"):
+    return AnalyzedLabResult(
+        test=test, value=value, unit=unit, reference_range=reference_range,
+        confidence=0.95, needs_verification=False, status=status,
+    )
 
-    draft = build_draft_response([finding], explained, tests_with_sources={"hemoglobin"})
+
+def explained_finding(test_name="Hemoglobin", **overrides):
+    fields = {
+        "test_name": test_name,
+        "result": "11.2 g/dL",
+        "status": "low",
+        "what_it_measures": "",
+        "explanation": SAFE_TEXT,
+        "possible_meaning": "",
+        "recommended_discussion": "",
+        "insufficient_information": False,
+        "sources_used": ["Hemoglobin Test"],
+        "generation_mode": "llm",
+    }
+    return ExplainedFinding(**{**fields, **overrides})
+
+
+def test_draft_ends_with_disclaimer_and_uses_code_computed_status():
+    # The explanation claims "normal"; the draft must use the status computed in code.
+    explained = [explained_finding(status="normal")]
+
+    draft = build_draft_response([analyzed()], explained, tests_with_sources={"hemoglobin"})
 
     assert draft.endswith(DISCLAIMER)
     assert check_disclaimer(draft)
     assert "which is low" in draft
     assert "normal" not in draft
     assert SAFE_TEXT in draft
+
+
+def test_draft_uses_the_explanations_result_text():
+    explained = [explained_finding(result="11.20 g/dL")]
+
+    draft = build_draft_response([analyzed()], explained, tests_with_sources={"hemoglobin"})
+
+    assert draft.startswith("Hemoglobin: your result is 11.20 g/dL;")
+
+
+def test_draft_drops_generated_text_for_a_test_without_sources():
+    generated = explained_finding(explanation="Invented claim with no evidence.")
+    insufficient = explained_finding(
+        explanation="There is not enough reliable information.", insufficient_information=True,
+        generation_mode="insufficient",
+    )
+
+    dropped = build_draft_response([analyzed()], [generated], tests_with_sources=set())
+    kept = build_draft_response([analyzed()], [insufficient], tests_with_sources=set())
+
+    assert "Invented claim" not in dropped
+    assert INSUFFICIENT_INFORMATION_MESSAGE in dropped
+    assert "There is not enough reliable information." in kept
+    assert INSUFFICIENT_INFORMATION_MESSAGE in kept
+
+
+def test_draft_pairs_repeated_tests_by_position():
+    results = [analyzed(value=11.2), analyzed(value=12.4)]
+    explained = [explained_finding(result="11.2 g/dL"), explained_finding(result="12.4 g/dL")]
+
+    first, second = build_draft_response(results, explained, {"hemoglobin"}).split("\n\n")[:2]
+
+    assert "11.2 g/dL" in first
+    assert "12.4 g/dL" in second
 
 
 # --- Pipeline -----------------------------------------------------------------------
@@ -195,11 +285,27 @@ def test_happy_path_is_approved(audit_logs):
     assert [(r.test, r.value) for r in safety_requests[0].original_result] == [("Hemoglobin", 11.2)]
 
 
-def test_placeholder_explanation_passes_real_safety(audit_logs):
-    result = run(audit_logs)  # placeholder explanation, real safety
+def test_real_template_explanation_with_sources_flows_into_the_draft(audit_logs):
+    result = run(audit_logs)  # Member 3's real ExplanationService (template mode), real Safety
 
     assert result.status == "approved"
-    assert "Your Hemoglobin value is 11.2 g/dL; the range on your report is 12.0-15.5." in result.final_response
+    hemoglobin_section = result.final_response.split("\n\n")[0]
+    # Template text quoting the retrieved source, plus the agent's fixed sentences.
+    assert 'From "Hemoglobin Test":' in hemoglobin_section
+    assert SAFE_TEXT in hemoglobin_section
+    assert "The recorded result is 11.2 g/dL." in hemoglobin_section
+    assert INSUFFICIENT_INFORMATION_MESSAGE not in hemoglobin_section
+
+
+def test_real_template_explanation_without_sources_is_insufficient(audit_logs):
+    result = run(audit_logs, retrieval_service=real_retrieval())  # nothing found
+
+    assert result.status == "approved"
+    section = result.final_response.split("\n\n")[0]
+    assert INSUFFICIENT_INFORMATION_MESSAGE in section
+    # The agent's own claim-free insufficient wording is kept.
+    assert "There is not enough reliable information" in section
+    assert "From \"" not in section
 
 
 def test_rejected_once_then_regenerated_draft_is_approved(audit_logs):
@@ -209,7 +315,8 @@ def test_rejected_once_then_regenerated_draft_is_approved(audit_logs):
 
     assert result.status == "approved"
     assert UNSAFE_TEXT not in result.final_response
-    assert [c["instruction"] for c in explanation.calls] == [None, REGENERATION_INSTRUCTIONS["diagnosis_detected"]]
+    assert [r.rejection_feedback for r in explanation.requests] == [[], [rejection_note("diagnosis_detected")]]
+    assert "diagnosis_detected" in explanation.requests[1].rejection_feedback[0]
 
 
 def test_rejected_every_attempt_returns_fallback_without_draft(audit_logs):
@@ -217,7 +324,9 @@ def test_rejected_every_attempt_returns_fallback_without_draft(audit_logs):
 
     result = run(audit_logs, explanation_service=explanation)
 
-    assert len(explanation.calls) == 3  # 1 attempt + 2 retries
+    assert len(explanation.requests) == 3  # 1 attempt + 2 retries
+    # The feedback list grows with each rejection.
+    assert [len(r.rejection_feedback) for r in explanation.requests] == [0, 1, 2]
     assert result.status == "fallback"
     assert result.message == FALLBACK_MESSAGE
     assert result.final_response is None
@@ -245,12 +354,14 @@ def test_missing_sources_give_insufficient_information_message(audit_logs, retri
 
     assert result.status == "approved"
     assert INSUFFICIENT_INFORMATION_MESSAGE in result.final_response
-    # With no evidence, nothing is sent to be explained, so nothing can be invented.
-    assert explanation.calls == []
+    # The finding is still sent, with no sources; the generated text that came back is not used.
+    [request] = explanation.requests
+    assert [f.test for f in request.findings] == ["Hemoglobin"]
+    assert request.retrieved_sources == []
     assert SAFE_TEXT not in result.final_response
 
 
-def test_only_tests_with_sources_are_explained(audit_logs):
+def test_all_findings_and_all_sources_are_sent_every_time(audit_logs):
     explanation = FakeExplanation(SAFE_TEXT)
 
     result = run(
@@ -259,10 +370,18 @@ def test_only_tests_with_sources_are_explained(audit_logs):
         explanation_service=explanation,
     )
 
-    assert [f.test for f in explanation.calls[0]["findings"]] == ["Hemoglobin"]
-    platelets_section = result.final_response.split("\n\n")[1]
+    [request] = explanation.requests
+    assert [(f.test, f.value, f.unit, f.reference_range, f.status) for f in request.findings] == [
+        ("Hemoglobin", 11.2, "g/dL", "12.0-15.5", "low"),
+        ("Platelets", 250.0, None, "150-400", "normal"),
+    ]
+    assert [s.test_name for s in request.retrieved_sources] == ["Hemoglobin"]
+    assert (request.task_id, request.report_id, request.user_id) == (result.task_id, result.report_id, "user-1")
+    hemoglobin_section, platelets_section = result.final_response.split("\n\n")[:2]
+    assert SAFE_TEXT in hemoglobin_section
     assert platelets_section.startswith("Platelets:")
     assert INSUFFICIENT_INFORMATION_MESSAGE in platelets_section
+    assert SAFE_TEXT not in platelets_section
 
 
 def test_explanation_service_raising_still_returns_extracted_data(audit_logs):
@@ -326,6 +445,28 @@ def test_audit_entries_per_stage_with_consistent_ids_and_no_patient_content(audi
             assert patient_content not in details
 
 
+def test_explanation_audit_counts_findings_by_generation_mode(audit_logs):
+    # Real template service: Hemoglobin has a source (template), Platelets has none (insufficient).
+    result = run(audit_logs, document_service=fake_document(HEMOGLOBIN, PLATELETS_UNVERIFIED))
+
+    [entry] = list(audit_logs.find({"task_id": result.task_id, "agent": "explanation_agent"}))
+    assert (entry["action"], entry["status"]) == ("explain", "success")
+    assert entry["details"] == {"attempt": 1, "generation_modes": {"insufficient": 1, "template": 1}}
+
+
+def test_explanation_response_for_another_task_falls_back(audit_logs):
+    explanation = FakeExplanation(SAFE_TEXT)
+
+    def wrong_task_explanation(request):
+        return explanation(request).model_copy(update={"task_id": "another-task"})
+
+    result = run(audit_logs, explanation_service=wrong_task_explanation)
+
+    assert result.status == "fallback"
+    assert result.message == EXPLANATION_UNAVAILABLE_MESSAGE
+    assert result.final_response is None
+
+
 def test_failed_document_stage_is_audited(audit_logs):
     result = run(audit_logs, document_service=raising)
 
@@ -358,7 +499,7 @@ def test_found_result_becomes_sources_for_explanation(audit_logs):
     assert hybrid.queries == ["Hemoglobin"]
 
     # The found result reached the Explanation service as a source.
-    [source] = explanation.calls[0]["sources"]
+    [source] = explanation.requests[0].retrieved_sources
     assert source.test_name == "Hemoglobin"
     assert SAFE_TEXT in source.information["passages"][0]
     assert source.sources == [
@@ -379,7 +520,7 @@ def test_found_and_not_found_results_in_one_report(audit_logs):
         explanation_service=explanation,
     )
 
-    assert [s.test_name for s in explanation.calls[0]["sources"]] == ["Hemoglobin"]
+    assert [s.test_name for s in explanation.requests[0].retrieved_sources] == ["Hemoglobin"]
     hemoglobin_section, platelets_section = result.final_response.split("\n\n")[:2]
     assert SAFE_TEXT in hemoglobin_section
     assert INSUFFICIENT_INFORMATION_MESSAGE in platelets_section
@@ -415,8 +556,9 @@ def test_retrieval_response_for_another_user_is_rejected(audit_logs):
     result = run(audit_logs, retrieval_service=wrong_user_retrieval, explanation_service=explanation)
 
     # Treated as a retrieval failure: no evidence is used.
-    assert explanation.calls == []
+    assert explanation.requests[0].retrieved_sources == []
     assert INSUFFICIENT_INFORMATION_MESSAGE in result.final_response
+    assert SAFE_TEXT not in result.final_response
 
 
 def test_retrieval_exception_is_audited_without_crashing(audit_logs):
