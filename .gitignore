@@ -223,9 +223,9 @@ venv/
 __pycache__/ 
 *.pyc 
 
-# Node 
-/ Frontend node_modules/ 
-dist/ 
+# Node
+node_modules/
+dist/
 build/ 
 
 # OS 
@@ -234,3 +234,12 @@ build/
 # IDE 
 .vscode/ 
 .idea/
+.agents/
+.claude/
+
+
+# Generated retrieval evaluation reports
+/backend/evaluation_results/
+
+# Generated curated knowledge vector index
+/backend/data/chroma/
