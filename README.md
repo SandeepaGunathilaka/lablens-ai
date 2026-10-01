@@ -19,7 +19,7 @@ Full architecture, agent communication flow, and design rationale: see `/docs` a
 
 ## Tech stack
 
-- **Frontend:** React + TypeScript + Tailwind CSS
+- **Frontend:** React + TypeScript + TanStack Start + Tailwind CSS + shadcn/ui
 - **Backend:** FastAPI (Python)
 - **Database:** MongoDB
 - **Vector DB:** ChromaDB + Sentence Transformers
@@ -76,11 +76,11 @@ It checks vector dimensions, normalization, ordering, and input token lengths.
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev          # http://localhost:8080
 ```
 
 ### Environment variables
-See `.env.example` for required keys (LLM API key, MongoDB URI, JWT secret).
+There is one `.env` for the whole repo, in `backend/`. See `backend/.env.example` for the required keys (LLM API key, MongoDB URI, JWT secret). The frontend reads the same file; only `VITE_*` keys such as `VITE_API_BASE_URL` reach the browser. Saving reports and chats requires a reachable MongoDB at `MONGODB_URI`.
 
 ## Usage
 
@@ -135,7 +135,28 @@ backend/
   requirements.txt
 frontend/
   src/
+    lib/api.ts          # every backend call
+    lib/store.tsx       # auth + data hooks
+    routes/             # pages (file-based routing)
+    components/lab/     # report, chat and timeline components
 ```
+
+## Saved reports and chats API
+
+All routes need a bearer token and only ever see the caller's own data; another user's ids return 404.
+
+| Route | Purpose |
+|---|---|
+| `POST /api/reports` (multipart `file`) | Runs the Coordinator and saves the report, its curated sources and the original file. A failed analysis is not saved and returns 422 with the reason. |
+| `GET /api/reports`, `GET /api/reports/{id}` | List (newest first) and detail |
+| `PATCH /api/reports/{id}` `{name}` | Rename |
+| `DELETE /api/reports/{id}` | Deletes the report, its file and all its chats |
+| `GET` / `DELETE /api/reports/{id}/file` | Download or delete only the original upload |
+| `GET /api/chats?report_id=`, `POST /api/chats` `{report_id}` | List and create chats |
+| `GET` / `PATCH` / `DELETE /api/chats/{id}` | Continue, rename, delete |
+| `POST /api/chats/{id}/messages` `{question, test_names?}` | Answers through Explanation then Safety with the same retry loop as the Coordinator. Only Safety-approved text or the fixed fallback message is stored. |
+
+`GET /auth/me` returns `{user_id, name, email}`. Allowed frontend origins come from `CORS_ORIGINS`.
 
 ## Explanation Agent
 
@@ -197,7 +218,7 @@ cd backend
 uvicorn main:app --reload
 
 cd frontend
-npm run dev
+npm run dev   # http://localhost:8080
 
 ## Curated knowledge vector index (Member 2)
 
