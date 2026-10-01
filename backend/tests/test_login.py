@@ -58,13 +58,23 @@ def test_me_without_token_returns_401(client):
     assert response.status_code == 401
 
 
-def test_me_with_valid_token_returns_user_id(client, registered_user):
+def test_me_with_valid_token_returns_public_profile(client, registered_user):
     token = login(client).json()["access_token"]
 
     response = client.get("/auth/me", headers=auth_header(token))
 
     assert response.status_code == 200
-    assert response.json() == {"user_id": registered_user["user_id"]}
+    assert response.json() == {
+        "user_id": registered_user["user_id"],
+        "name": USER["name"],
+        "email": USER["email"],
+    }
+
+
+def test_me_for_deleted_account_returns_401(client):
+    response = client.get("/auth/me", headers=auth_header(create_access_token("no-such-user")))
+
+    assert response.status_code == 401
 
 
 def test_me_with_garbage_or_tampered_token_returns_401(client, registered_user):

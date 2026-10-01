@@ -138,7 +138,14 @@ def login(payload: LoginRequest, users: Collection = Depends(get_users_collectio
     )
 
 
-# Throwaway route to prove the JWT flow end-to-end; remove once real protected routes exist.
-@router.get("/me")
-def me(user_id: str = Depends(get_current_user)):
-    return {"user_id": user_id}
+@router.get("/me", response_model=UserPublic)
+def me(user_id: str = Depends(get_current_user), users: Collection = Depends(get_users_collection)):
+    user = users.find_one({"user_id": user_id})
+    if user is None:
+        # A valid token for a deleted account is treated like no token at all.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user

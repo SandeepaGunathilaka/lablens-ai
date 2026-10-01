@@ -33,3 +33,18 @@ def get_audit_logs_collection() -> Collection:
     Tests override this to swap in an in-memory fake database.
     """
     return db["audit_logs"]
+
+
+def get_reports_collection() -> Collection:
+    """FastAPI dependency that returns the saved reports collection."""
+    return db["reports"]
+
+
+def get_report_files_collection() -> Collection:
+    """FastAPI dependency that returns the uploaded original files, one document per report."""
+    return db["report_files"]
+
+
+def get_chats_collection() -> Collection:
+    """FastAPI dependency that returns the chats collection (messages are embedded)."""
+    return db["chats"]
