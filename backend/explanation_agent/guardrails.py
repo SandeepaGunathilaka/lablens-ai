@@ -9,20 +9,27 @@ from explanation_agent.copy import required_explanation_sentences
 from explanation_agent.models import ExplanationTask
 
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
-_DISALLOWED = (
+# Statements addressed to the reader about themselves. Never acceptable anywhere,
+# including in retrieved source excerpts that would be quoted to the patient.
+_PERSONAL_DISALLOWED = (
     ("you have", re.compile(r"\byou have\b(?!\s+not\b)", re.IGNORECASE)),
     ("you've got", re.compile(r"\byou've got\b", re.IGNORECASE)),
     ("you suffer", re.compile(r"\byou suffer\b", re.IGNORECASE)),
     ("you are suffering", re.compile(r"\byou(?: are|'re) suffering\b", re.IGNORECASE)),
-    ("diagnosis language", re.compile(r"\bdiagnos\w*\b", re.IGNORECASE)),
-    ("prescription language", re.compile(r"\bprescri\w*\b", re.IGNORECASE)),
-    ("dosage", re.compile(r"\bdosage\b|\bdose of\b", re.IGNORECASE)),
     ("you should take", re.compile(r"\byou should take\b", re.IGNORECASE)),
     ("you need to take", re.compile(r"\byou need to take\b", re.IGNORECASE)),
     ("start taking", re.compile(r"\bstart taking\b", re.IGNORECASE)),
     ("stop taking", re.compile(r"\bstop taking\b", re.IGNORECASE)),
+)
+# Clinical vocabulary. Enforced on the model's own draft, which speaks to the patient,
+# but not on third-person reference text ("this test helps diagnose anemia").
+_CLINICAL_DISALLOWED = (
+    ("diagnosis language", re.compile(r"\bdiagnos\w*\b", re.IGNORECASE)),
+    ("prescription language", re.compile(r"\bprescri\w*\b", re.IGNORECASE)),
+    ("dosage", re.compile(r"\bdosage\b|\bdose of\b", re.IGNORECASE)),
     ("treatment is", re.compile(r"\btreatment is\b", re.IGNORECASE)),
 )
+_DISALLOWED = _PERSONAL_DISALLOWED + _CLINICAL_DISALLOWED
 
 _MAX_FIELD_LENGTH = 1500
 
@@ -58,12 +65,18 @@ def parse_model_draft(raw: str) -> ModelDraft:
     return draft
 
 
+def _reasons(text: str, patterns) -> list[str]:
+    return [f"disallowed language: {label}" for label, pattern in patterns if pattern.search(text)]
+
+
 def disallowed_reasons(text: str) -> list[str]:
-    reasons = []
-    for label, pattern in _DISALLOWED:
-        if pattern.search(text):
-            reasons.append(f"disallowed language: {label}")
-    return reasons
+    """Every disallowed phrase, personal and clinical. For text written to the patient."""
+    return _reasons(text, _DISALLOWED)
+
+
+def personal_disallowed_reasons(text: str) -> list[str]:
+    """Only statements about the reader (e.g. "you have"). For raw retrieved source excerpts."""
+    return _reasons(text, _PERSONAL_DISALLOWED)
 
 
 def validate_model_draft(draft: ModelDraft, task: ExplanationTask) -> list[str]:
