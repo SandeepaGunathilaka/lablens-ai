@@ -82,3 +82,14 @@ Run `python -m agents.calibrate_semantic_retrieval` from backend.
 - The held-out split (48 cases) is strictly firewalled and not used for threshold candidates, selection, or reporting.
 - Calibration selected a policy with `similarity_threshold = 0.0` and `margin_threshold = 0.22541916370391846`, achieving 100% precision, 0% negative false-accept rate, and 12.5% supported coverage (7/56) with 0 wrong accepts on calibration data. Full results are written to `evaluation_results/semantic_calibration.json`.
 
+
+# Portable benchmark fingerprints
+
+The semantic fixture's canonical LF SHA-256 is
+`cf799511635cb44add34e8710933142a45a1c717a8f712551f7f42809b1dd0e1`.
+The historical `e481c484da856d1488b2bd728cb4c0732b577d4bea23c3a52156271c2f5e890b`
+fingerprint used CRLF between lines but a single LF after the final closing brace.
+Converting only those line endings reproduces the historical hash exactly; query
+wording, labels, splits, and ordering are unchanged. `.gitattributes` now pins both
+benchmark JSON files and the KB JSON files to LF. Runtime provenance checks still
+hash exact bytes, so content edits continue to invalidate frozen evaluations.

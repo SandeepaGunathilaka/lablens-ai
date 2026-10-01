@@ -1,17 +1,18 @@
-"""HTTP endpoint for the Explanation Agent.
-
-Input size limits are enforced by the request model. Authorization should be
-added with the shared JWT middleware when that foundation is wired in.
-"""
+"""HTTP endpoint for the Explanation Agent. Input size limits live on the request model."""
 
 import os
 import threading
 import time
+from collections import Counter
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, status
+from pymongo.collection import Collection
 
+from database import get_audit_logs_collection
 from explanation_agent.models import ExplanationRequest, ExplanationResponse
 from explanation_agent.service import ExplanationService, build_explanation_service
+from logging_service import log_event
+from security.dependencies import get_current_user
 
 router = APIRouter(tags=["explanation"])
 
@@ -37,7 +38,7 @@ def clear_rate_limits() -> None:
         _hits.clear()
 
 
-def enforce_rate_limit(request: Request) -> None:
+def enforce_rate_limit(user_id: str) -> None:
     raw_limit = os.getenv("EXPLANATION_RATE_LIMIT", "30").strip()
     try:
         limit = int(raw_limit)
@@ -46,26 +47,44 @@ def enforce_rate_limit(request: Request) -> None:
     if limit <= 0:
         return
 
-    host = request.client.host if request.client else "unknown"
     now = time.monotonic()
     window_start = now - 60
     with _lock:
-        recent = [stamp for stamp in _hits.get(host, []) if stamp >= window_start]
+        recent = [stamp for stamp in _hits.get(user_id, []) if stamp >= window_start]
         if len(recent) >= limit:
-            _hits[host] = recent
+            _hits[user_id] = recent
             raise HTTPException(
-                status_code=429,
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many explanation requests. Try again shortly.",
             )
         recent.append(now)
-        _hits[host] = recent
+        _hits[user_id] = recent
 
 
 @router.post("/explanation", response_model=ExplanationResponse)
 def create_explanation(
     body: ExplanationRequest,
-    request: Request,
     service: ExplanationService = Depends(get_explanation_service),
+    audit_logs: Collection = Depends(get_audit_logs_collection),
+    current_user: str = Depends(get_current_user),
 ) -> ExplanationResponse:
-    enforce_rate_limit(request)
-    return service.explain(body)
+    # Checked before anything runs or is logged, same as the Safety Agent.
+    if body.user_id != current_user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed for this user")
+    enforce_rate_limit(current_user)
+
+    response = service.explain(body)
+
+    # Counts only: no values, test names, or explanation text.
+    modes = Counter(finding.generation_mode for finding in response.findings)
+    log_event(
+        audit_logs,
+        task_id=body.task_id,
+        report_id=body.report_id,
+        user_id=body.user_id,
+        agent="explanation_agent",
+        action="explain",
+        status="success",
+        details={"finding_count": len(response.findings), "generation_modes": dict(modes)},
+    )
+    return response

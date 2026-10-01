@@ -1,27 +1,27 @@
 """Explanation Agent public contract.
 
 The Coordinator should:
-- call ``calculate_status`` and pass the result in ``ExplanationRequest.status``
-- pass Retrieval Agent citations as ``retrieved_sources`` when they exist
-- join the four narrative fields with ``build_draft_response``, which appends the
-  standard disclaimer once, before sending that string to the Safety Agent
+- pass each finding with the status it computed in code
+- pass the same ``retrieved_sources`` list it sends to the Safety Agent
+- on a Safety rejection, call again with the regeneration instruction in
+  ``rejection_feedback``
+- join the four narrative fields of each ``ExplainedFinding`` into the draft and
+  append the Safety Agent's ``DISCLAIMER`` itself
 """
 
-from explanation_agent.copy import STANDARD_DISCLAIMER
-from explanation_agent.draft import build_draft_response
 from explanation_agent.models import (
+    ExplainedFinding,
+    ExplanationFinding,
     ExplanationRequest,
     ExplanationResponse,
-    RetrievedSource,
 )
-from explanation_agent.status import StatusAssessment, calculate_status
+from explanation_agent.service import ExplanationService, build_explanation_service
 
 __all__ = [
-    "STANDARD_DISCLAIMER",
+    "ExplainedFinding",
+    "ExplanationFinding",
     "ExplanationRequest",
     "ExplanationResponse",
-    "RetrievedSource",
-    "StatusAssessment",
-    "build_draft_response",
-    "calculate_status",
+    "ExplanationService",
+    "build_explanation_service",
 ]
