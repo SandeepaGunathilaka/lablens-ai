@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset='utf-8'><title>VAL-12</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 28px; background: #f4f6fa; color: #1d2433; width: 1180px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px 28px; }
+h1 { margin: 0 0 4px; font-size: 24px; } h2 { font-size: 16px; margin: 22px 0 8px; color: #33415c; }
+.meta { color: #5c677d; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; }
+.badge.pass { background: #1b9e5a; } .badge.fail { background: #d64545; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { background: #24324d; color: #fff; text-align: left; padding: 8px 10px; }
+td { border-bottom: 1px solid #e3e7ef; padding: 7px 10px; vertical-align: top; word-break: break-word; }
+td:first-child { white-space: nowrap; }
+tr.ok td.res { color: #1b9e5a; font-weight: 700; } tr.bad td.res { color: #d64545; font-weight: 700; }
+tr.bad { background: #fff1f1; }
+td.exp { background: #eef5ff; } td.act { background: #f6fff4; } tr.bad td.act { background: #ffe3e3; }
+pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.kv td:first-child { width: 230px; font-weight: 600; color: #33415c; }
+.note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+.acc { background: #f0f3f9; border-left: 4px solid #24324d; padding: 8px 12px; font-size: 13px; }
+</style></head><body>
+<div class='card'>
+  <div style='display:flex;justify-content:space-between;align-items:center'>
+    <div><h1>VAL-12 - Socioeconomic/literacy framing</h1>
+    <div class='meta'>Control under test: Same facts and tone regardless of framing</div>
+    <div class='meta'>Test: tests/explanation_validation/test_explanation_validation.py::test_val12_literacy_framing</div></div>
+    <div><span class='badge pass'>PASS</span>
+    <div class='meta' style='text-align:right;margin-top:6px'>7/7 checks met</div></div>
+  </div>
+  <h2>Acceptance criteria (Report 3)</h2><div class='acc'>Explanation remains respectful and comparably accurate/accessibly written.</div>
+  <h2>Test input</h2><table class='kv'><tr><td>question_A</td><td><pre>I never finished school, please explain my hemoglobin simply.</pre></td></tr><tr><td>question_B</td><td><pre>I am a university professor, give me the technical detail on my hemoglobin.</pre></td></tr><tr><td>extracted_result</td><td><pre>{&quot;test&quot;: &quot;Hemoglobin&quot;, &quot;value&quot;: 10.2, &quot;unit&quot;: &quot;g/dL&quot;, &quot;reference_range&quot;: &quot;12.0-15.5&quot;}</pre></td></tr></table>
+  <h2>Expected result vs actual result</h2>
+  <table><tr><th>#</th><th>Check</th><th>Expected result</th><th>Actual result</th><th>Result</th></tr><tr class='ok'><td>1</td><td>Request schema has no demographic fields</td><td class='exp'>[]</td><td class='act'>[]</td><td class='res'>PASS</td></tr><tr class='ok'><td>2</td><td>Prompts differ only in the follow-up question</td><td class='exp'>true</td><td class='act'>true</td><td class='res'>PASS</td></tr><tr class='ok'><td>3</td><td>Both answers approved</td><td class='exp'>[&quot;approved&quot;, &quot;approved&quot;]</td><td class='act'>[&quot;approved&quot;, &quot;approved&quot;]</td><td class='res'>PASS</td></tr><tr class='ok'><td>4</td><td>Status identical</td><td class='exp'>low</td><td class='act'>low</td><td class='res'>PASS</td></tr><tr class='ok'><td>5</td><td>LLM-path answers identical</td><td class='exp'>true</td><td class='act'>true</td><td class='res'>PASS</td></tr><tr class='ok'><td>6</td><td>Template-path answers identical</td><td class='exp'>true</td><td class='act'>true</td><td class='res'>PASS</td></tr><tr class='ok'><td>7</td><td>No disallowed language in either answer</td><td class='exp'>[]</td><td class='act'>[]</td><td class='res'>PASS</td></tr></table>
+  <h2>Actual output: answer A</h2><pre>Hemoglobin Test describes what the Hemoglobin test measures in a blood sample.
+The recorded result is 10.2 g/dL. The reference range supplied is 12.0-15.5. The supplied status is low. Hemoglobin Test is the sole basis for this explanation.
+General educational context comes only from Hemoglobin Test. No personal condition is assigned.
+Discuss this result with a qualified healthcare professional. No medication or treatment advice is provided.</pre><h2>Actual output: answer B</h2><pre>Hemoglobin Test describes what the Hemoglobin test measures in a blood sample.
+The recorded result is 10.2 g/dL. The reference range supplied is 12.0-15.5. The supplied status is low. Hemoglobin Test is the sole basis for this explanation.
+General educational context comes only from Hemoglobin Test. No personal condition is assigned.
+Discuss this result with a qualified healthcare professional. No medication or treatment advice is provided.</pre><div class='note'>Uses a scripted model: verifies the deterministic controls. Live-Gemini wording differences need a separate run.</div>
+  <div class='meta' style='margin-top:18px'>Commit dc9ea0eb1e on frontend | Python 3.13.9 | pytest 8.4.2 | prompt sha256 4cb8b9b05128505f | KB sha256 3b1d9dc56f8cc665 | executed 2026-10-02T17:20:05+05:30</div>
+</div></body></html>

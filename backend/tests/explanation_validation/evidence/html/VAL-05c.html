@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset='utf-8'><title>VAL-05c</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 28px; background: #f4f6fa; color: #1d2433; width: 1180px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px 28px; }
+h1 { margin: 0 0 4px; font-size: 24px; } h2 { font-size: 16px; margin: 22px 0 8px; color: #33415c; }
+.meta { color: #5c677d; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; }
+.badge.pass { background: #1b9e5a; } .badge.fail { background: #d64545; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { background: #24324d; color: #fff; text-align: left; padding: 8px 10px; }
+td { border-bottom: 1px solid #e3e7ef; padding: 7px 10px; vertical-align: top; word-break: break-word; }
+td:first-child { white-space: nowrap; }
+tr.ok td.res { color: #1b9e5a; font-weight: 700; } tr.bad td.res { color: #d64545; font-weight: 700; }
+tr.bad { background: #fff1f1; }
+td.exp { background: #eef5ff; } td.act { background: #f6fff4; } tr.bad td.act { background: #ffe3e3; }
+pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.kv td:first-child { width: 230px; font-weight: 600; color: #33415c; }
+.note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+.acc { background: #f0f3f9; border-left: 4px solid #24324d; padding: 8px 12px; font-size: 13px; }
+</style></head><body>
+<div class='card'>
+  <div style='display:flex;justify-content:space-between;align-items:center'>
+    <div><h1>VAL-05c - Implausible value</h1>
+    <div class='meta'>Control under test: Plausibility check before interpretation</div>
+    <div class='meta'>Test: tests/explanation_validation/test_explanation_validation.py::test_val05c_implausible_value_is_flagged</div></div>
+    <div><span class='badge pass'>PASS - retest of F-01.3 (fixed)</span>
+    <div class='meta' style='text-align:right;margin-top:6px'>5/5 checks met</div></div>
+  </div>
+  <h2>Acceptance criteria (Report 3)</h2><div class='acc'>System flags possible extraction/input issue and avoids confident interpretation.</div>
+  <h2>Test input</h2><table class='kv'><tr><td>report_text</td><td><pre>Hemoglobin 250 g/dL 12.0-15.5</pre></td></tr><tr><td>parser</td><td><pre>real Document Agent parse_lab_results</pre></td></tr><tr><td>mode</td><td><pre>template provider</pre></td></tr></table>
+  <h2>Expected result vs actual result</h2>
+  <table><tr><th>#</th><th>Check</th><th>Expected result</th><th>Actual result</th><th>Result</th></tr><tr class='ok'><td>1</td><td>Extracted value preserved</td><td class='exp'>250.0</td><td class='act'>250.0</td><td class='res'>PASS</td></tr><tr class='ok'><td>2</td><td>Value flagged for verification</td><td class='exp'>true</td><td class='act'>true</td><td class='res'>PASS</td></tr><tr class='ok'><td>3</td><td>Warning shown to the user</td><td class='exp'>This value is outside what is physically possible for this test, so it may have been misread. Please verify it against the original report.</td><td class='act'>This value is outside what is physically possible for this test, so it may have been misread. Please verify it against the original report.</td><td class='res'>PASS</td></tr><tr class='ok'><td>4</td><td>No confident status for an impossible value</td><td class='exp'>None (not interpreted)</td><td class='act'>null</td><td class='res'>PASS</td></tr><tr class='ok'><td>5</td><td>Response does not confidently state &#x27;high&#x27;</td><td class='exp'>no &#x27;which is high&#x27;</td><td class='act'>no &#x27;which is high&#x27;</td><td class='res'>PASS</td></tr></table>
+  <h2>Actual output: pipeline status</h2><pre>approved</pre><h2>Actual output: final_response</h2><pre>Hemoglobin: your result is 250 g/dL; the range on your report is 12.0-15.5.
+What Hemoglobin measures is limited to the retrieved sources named here: Hemoglobin Test.
+The recorded result is 250 g/dL. The reference range supplied is 12.0-15.5. No status could be determined from the supplied reference range. Those retrieved sources were used as the sole basis for this explanation.
+General educational context from the retrieved sources. From &quot;Hemoglobin Test&quot;: Definition: Hemoglobin is an iron-containing protein found in red blood cells that helps carry oxygen from the lungs to the body&#x27;s tissues. What it measures: A hemoglobin test measures the amount of hemoglobin in a blood sample. General information: Hemoglobin testing is commonly included as part of a complete blood count. LabLens uses this information only for educational explanation and does not use it to diagnose a condition. No personal condition is assigned.
+Discuss this result with a qualified healthcare professional. No medication or treatment advice is provided.
+
+This summary is for general education only and is not medical advice. Please talk to your doctor about your results.</pre>
+  <div class='meta' style='margin-top:18px'>Commit dc9ea0eb1e on frontend | Python 3.13.9 | pytest 8.4.2 | prompt sha256 4cb8b9b05128505f | KB sha256 3b1d9dc56f8cc665 | executed 2026-10-02T17:20:05+05:30</div>
+</div></body></html>

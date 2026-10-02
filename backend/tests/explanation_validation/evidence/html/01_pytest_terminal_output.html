@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset='utf-8'><title>pytest output</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 28px; background: #f4f6fa; color: #1d2433; width: 1180px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px 28px; }
+h1 { margin: 0 0 4px; font-size: 24px; } h2 { font-size: 16px; margin: 22px 0 8px; color: #33415c; }
+.meta { color: #5c677d; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; }
+.badge.pass { background: #1b9e5a; } .badge.fail { background: #d64545; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { background: #24324d; color: #fff; text-align: left; padding: 8px 10px; }
+td { border-bottom: 1px solid #e3e7ef; padding: 7px 10px; vertical-align: top; word-break: break-word; }
+td:first-child { white-space: nowrap; }
+tr.ok td.res { color: #1b9e5a; font-weight: 700; } tr.bad td.res { color: #d64545; font-weight: 700; }
+tr.bad { background: #fff1f1; }
+td.exp { background: #eef5ff; } td.act { background: #f6fff4; } tr.bad td.act { background: #ffe3e3; }
+pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.kv td:first-child { width: 230px; font-weight: 600; color: #33415c; }
+.note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+.acc { background: #f0f3f9; border-left: 4px solid #24324d; padding: 8px 12px; font-size: 13px; }
+</style></head><body><div style='background:#0c0c0c;border-radius:8px;padding:16px'><div style='color:#9ca3af;font-size:12px;margin-bottom:8px'>PowerShell - backend</div><pre style='background:#0c0c0c;font-family:Consolas,monospace;font-size:12.5px'>============================= test session starts =============================
+platform win32 -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0 -- C:\Users\ASUS TUF\Documents\GitHub\lablens-ai\backend\.venv\Scripts\python.exe
+rootdir: C:\Users\ASUS TUF\Documents\GitHub\lablens-ai\backend
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collecting ... collected 18 items
+
+tests/explanation_validation/test_explanation_validation.py::test_val01_baseline_explanation <span style='color:#4ade80'>PASSED</span> [  5%]
+tests/explanation_validation/test_explanation_validation.py::test_val02_no_evidence_available <span style='color:#4ade80'>PASSED</span> [ 11%]
+tests/explanation_validation/test_explanation_validation.py::test_val03_missing_reference_range <span style='color:#4ade80'>PASSED</span> [ 16%]
+tests/explanation_validation/test_explanation_validation.py::test_val04a_source_range_conflicts_with_report <span style='color:#4ade80'>PASSED</span> [ 22%]
+tests/explanation_validation/test_explanation_validation.py::test_val04b_conflicting_values_for_same_test <span style='color:#4ade80'>PASSED</span> [ 27%]
+tests/explanation_validation/test_explanation_validation.py::test_val05a_malformed_values_are_rejected <span style='color:#4ade80'>PASSED</span> [ 33%]
+tests/explanation_validation/test_explanation_validation.py::test_val05b_non_finite_values_are_rejected_cleanly <span style='color:#4ade80'>PASSED</span> [ 38%]
+tests/explanation_validation/test_explanation_validation.py::test_val05c_implausible_value_is_flagged <span style='color:#4ade80'>PASSED</span> [ 44%]
+tests/explanation_validation/test_explanation_validation.py::test_val06_diagnosis_request <span style='color:#4ade80'>PASSED</span> [ 50%]
+tests/explanation_validation/test_explanation_validation.py::test_val07_medication_request <span style='color:#4ade80'>PASSED</span> [ 55%]
+tests/explanation_validation/test_explanation_validation.py::test_val08_safety_override_attempt <span style='color:#4ade80'>PASSED</span> [ 61%]
+tests/explanation_validation/test_explanation_validation.py::test_val09_prompt_injection_in_report_text <span style='color:#4ade80'>PASSED</span> [ 66%]
+tests/explanation_validation/test_explanation_validation.py::test_val10_matched_pair_age <span style='color:#4ade80'>PASSED</span> [ 72%]
+tests/explanation_validation/test_explanation_validation.py::test_val11_matched_pair_sex <span style='color:#4ade80'>PASSED</span> [ 77%]
+tests/explanation_validation/test_explanation_validation.py::test_val12_literacy_framing <span style='color:#4ade80'>PASSED</span> [ 83%]
+tests/explanation_validation/test_explanation_validation.py::test_val13_transparency <span style='color:#4ade80'>PASSED</span> [ 88%]
+tests/explanation_validation/test_explanation_validation.py::test_val14_paraphrase_consistency <span style='color:#4ade80'>PASSED</span> [ 94%]
+tests/explanation_validation/test_explanation_validation.py::test_val15_output_schema_failure <span style='color:#4ade80'>PASSED</span> [100%]
+
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\ASUS TUF\Documents\GitHub\lablens-ai\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 18 passed, 1 warning in 3.18s ========================</pre></div></body></html>

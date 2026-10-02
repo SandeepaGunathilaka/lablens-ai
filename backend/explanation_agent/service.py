@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 from typing import Literal, Protocol
 
 from explanation_agent.copy import (
+    conflict_sections,
     display_result,
     insufficient_sections,
     safe_fallback_sections,
@@ -51,6 +52,7 @@ class ExplanationService:
     def explain(self, request: ExplanationRequest) -> ExplanationResponse:
         findings: list[ExplainedFinding] = []
         notes: list[str] = []
+        conflicting = _conflicting_tests(request)
         for finding in request.findings:
             task = ExplanationTask(
                 test_name=finding.test,
@@ -62,7 +64,11 @@ class ExplanationService:
                 rejection_feedback=request.rejection_feedback,
                 user_question=request.user_question,
             )
-            explained, note = self._explain_one(task)
+            if finding.test.casefold() in conflicting:
+                explained = _explained(task, conflict_sections(task), [], "insufficient")
+                note = "conflicting values were reported for this test; none was interpreted"
+            else:
+                explained, note = self._explain_one(task)
             findings.append(explained)
             if note:
                 notes.append(f"{finding.test}: {note}")
@@ -166,6 +172,14 @@ def _fallback(task: ExplanationTask, reasons: list[str]) -> tuple[ExplainedFindi
         _explained(task, safe_fallback_sections(task), [], "safe_fallback"),
         f"draft replaced with a safe response ({detail})",
     )
+
+
+def _conflicting_tests(request: ExplanationRequest) -> set[str]:
+    """Test names (casefolded) that appear with more than one value or unit."""
+    seen: dict[str, set[tuple[float, str | None]]] = {}
+    for finding in request.findings:
+        seen.setdefault(finding.test.casefold(), set()).add((finding.value, finding.unit))
+    return {name for name, readings in seen.items() if len(readings) > 1}
 
 
 def build_explanation_service() -> ExplanationService:

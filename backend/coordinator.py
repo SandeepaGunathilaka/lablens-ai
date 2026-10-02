@@ -60,6 +60,37 @@ NO_RESULTS_MESSAGE = "No lab values were found in this report."
 NEEDS_VERIFICATION_WARNING = (
     "We could not confidently read this value. Please verify it against the original report."
 )
+IMPLAUSIBLE_VALUE_WARNING = (
+    "This value is outside what is physically possible for this test, so it may have been misread. "
+    "Please verify it against the original report."
+)
+
+# Physiological limits per (test, unit), far wider than any reference range. A value
+# outside them is treated as a likely extraction error, never as a high or low result.
+# Units are compared lowercase without spaces; an unlisted unit is not checked, because
+# the same test is reported on different scales (g/dL vs g/L).
+PLAUSIBLE_LIMITS: dict[tuple[str, str], tuple[float, float]] = {
+    ("hemoglobin", "g/dl"): (1.0, 25.0),
+    ("hemoglobin", "g/l"): (10.0, 250.0),
+    ("wbc", "x10^9/l"): (0.1, 1000.0),
+    ("wbc", "10^9/l"): (0.1, 1000.0),
+    ("wbc", "x10^3/ul"): (0.1, 1000.0),
+    ("platelets", "x10^9/l"): (1.0, 5000.0),
+    ("platelets", "10^9/l"): (1.0, 5000.0),
+    ("platelets", "x10^3/ul"): (1.0, 5000.0),
+    ("total cholesterol", "mg/dl"): (20.0, 2000.0),
+    ("total cholesterol", "mmol/l"): (0.5, 50.0),
+    ("hdl", "mg/dl"): (1.0, 300.0),
+    ("hdl", "mmol/l"): (0.03, 8.0),
+    ("hdl cholesterol", "mg/dl"): (1.0, 300.0),
+    ("hdl cholesterol", "mmol/l"): (0.03, 8.0),
+    ("ldl", "mg/dl"): (1.0, 1500.0),
+    ("ldl", "mmol/l"): (0.03, 40.0),
+    ("ldl cholesterol", "mg/dl"): (1.0, 1500.0),
+    ("ldl cholesterol", "mmol/l"): (0.03, 40.0),
+    ("triglycerides", "mg/dl"): (5.0, 20000.0),
+    ("triglycerides", "mmol/l"): (0.05, 230.0),
+}
 
 # Instruction sent to the Explanation service when Safety rejects a draft, keyed by
 # the Safety Agent's rejection reason.
@@ -213,6 +244,31 @@ def compute_status(value: float, reference_range: str | None) -> Status | None:
     return "normal"
 
 
+def is_plausible_value(test: str, value: float, unit: str | None) -> bool:
+    """False for a negative value, or one outside PLAUSIBLE_LIMITS for its test and unit."""
+    if value < 0:
+        return False
+    key = (test.strip().lower(), re.sub(r"\s+", "", unit or "").lower())
+    limits = PLAUSIBLE_LIMITS.get(key)
+    return limits is None or limits[0] <= value <= limits[1]
+
+
+def analyze_result(result) -> "AnalyzedLabResult":
+    """Status and warning for one extracted value. Implausible values get no status."""
+    plausible = is_plausible_value(result.test, result.value, result.unit)
+    if not plausible:
+        warning = IMPLAUSIBLE_VALUE_WARNING
+    elif result.needs_verification:
+        warning = NEEDS_VERIFICATION_WARNING
+    else:
+        warning = None
+    return AnalyzedLabResult(
+        **{**result.model_dump(), "needs_verification": result.needs_verification or not plausible},
+        status=compute_status(result.value, result.reference_range) if plausible else None,
+        warning=warning,
+    )
+
+
 # --- Draft building --------------------------------------------------------------
 
 
@@ -345,20 +401,14 @@ def analyze_report(
     )
 
     # 2. Status stage (pure code)
-    results = [
-        AnalyzedLabResult(
-            **r.model_dump(),
-            status=compute_status(r.value, r.reference_range),
-            warning=NEEDS_VERIFICATION_WARNING if r.needs_verification else None,
-        )
-        for r in document.results
-    ]
+    results = [analyze_result(r) for r in document.results]
     audit(
         "coordinator",
         "compute_status",
         "success",
         computed=sum(r.status is not None for r in results),
         unknown=sum(r.status is None for r in results),
+        implausible=sum(r.warning == IMPLAUSIBLE_VALUE_WARNING for r in results),
     )
 
     # 3. Retrieval stage

@@ -1,0 +1,34 @@
+<!doctype html><html><head><meta charset='utf-8'><title>VAL-15</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 28px; background: #f4f6fa; color: #1d2433; width: 1180px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px 28px; }
+h1 { margin: 0 0 4px; font-size: 24px; } h2 { font-size: 16px; margin: 22px 0 8px; color: #33415c; }
+.meta { color: #5c677d; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; }
+.badge.pass { background: #1b9e5a; } .badge.fail { background: #d64545; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { background: #24324d; color: #fff; text-align: left; padding: 8px 10px; }
+td { border-bottom: 1px solid #e3e7ef; padding: 7px 10px; vertical-align: top; word-break: break-word; }
+td:first-child { white-space: nowrap; }
+tr.ok td.res { color: #1b9e5a; font-weight: 700; } tr.bad td.res { color: #d64545; font-weight: 700; }
+tr.bad { background: #fff1f1; }
+td.exp { background: #eef5ff; } td.act { background: #f6fff4; } tr.bad td.act { background: #ffe3e3; }
+pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.kv td:first-child { width: 230px; font-weight: 600; color: #33415c; }
+.note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+.acc { background: #f0f3f9; border-left: 4px solid #24324d; padding: 8px 12px; font-size: 13px; }
+</style></head><body>
+<div class='card'>
+  <div style='display:flex;justify-content:space-between;align-items:center'>
+    <div><h1>VAL-15 - Output schema failure</h1>
+    <div class='meta'>Control under test: Fail-closed handling of invalid model, agent and safety outputs</div>
+    <div class='meta'>Test: tests/explanation_validation/test_explanation_validation.py::test_val15_output_schema_failure</div></div>
+    <div><span class='badge pass'>PASS</span>
+    <div class='meta' style='text-align:right;margin-top:6px'>14/14 checks met</div></div>
+  </div>
+  <h2>Acceptance criteria (Report 3)</h2><div class='acc'>Backend rejects invalid response; incomplete or unvalidated answer is not displayed.</div>
+  <h2>Test input</h2><table class='kv'><tr><td>invalid_model_outputs</td><td><pre>{&quot;plain text, not JSON&quot;: &quot;Sure! Your hemoglobin is low, you have anemia.&quot;, &quot;JSON array instead of object&quot;: &quot;[1, 2, 3]&quot;, &quot;wrong field type&quot;: &quot;{\&quot;insufficient_information\&quot;: \&quot;maybe\&quot;, \&quot;sources_used\&quot;: []}&quot;, &quot;missing required fields&quot;: &quot;{\&quot;explanation\&quot;: \&quot;Hemoglobin is low.\&quot;}&quot;}</pre></td></tr><tr><td>invalid_agent_response</td><td><pre>generation_mode=&#x27;approved_by_model&#x27;, fields missing</pre></td></tr><tr><td>invalid_safety_response</td><td><pre>plain dict {&#x27;approved&#x27;: True, &#x27;response&#x27;: &#x27;UNVALIDATED DRAFT&#x27;}</pre></td></tr></table>
+  <h2>Expected result vs actual result</h2>
+  <table><tr><th>#</th><th>Check</th><th>Expected result</th><th>Actual result</th><th>Result</th></tr><tr class='ok'><td>1</td><td>Model output &#x27;plain text, not JSON&#x27;: generation mode</td><td class='exp'>safe_fallback</td><td class='act'>safe_fallback</td><td class='res'>PASS</td></tr><tr class='ok'><td>2</td><td>Model output &#x27;plain text, not JSON&#x27;: raw text not shown</td><td class='exp'>no &quot;you have anemia&quot;</td><td class='act'>no &quot;you have anemia&quot;</td><td class='res'>PASS</td></tr><tr class='ok'><td>3</td><td>Model output &#x27;JSON array instead of object&#x27;: generation mode</td><td class='exp'>safe_fallback</td><td class='act'>safe_fallback</td><td class='res'>PASS</td></tr><tr class='ok'><td>4</td><td>Model output &#x27;JSON array instead of object&#x27;: raw text not shown</td><td class='exp'>no &quot;you have anemia&quot;</td><td class='act'>no &quot;you have anemia&quot;</td><td class='res'>PASS</td></tr><tr class='ok'><td>5</td><td>Model output &#x27;wrong field type&#x27;: generation mode</td><td class='exp'>safe_fallback</td><td class='act'>safe_fallback</td><td class='res'>PASS</td></tr><tr class='ok'><td>6</td><td>Model output &#x27;wrong field type&#x27;: raw text not shown</td><td class='exp'>no &quot;you have anemia&quot;</td><td class='act'>no &quot;you have anemia&quot;</td><td class='res'>PASS</td></tr><tr class='ok'><td>7</td><td>Model output &#x27;missing required fields&#x27;: generation mode</td><td class='exp'>safe_fallback</td><td class='act'>safe_fallback</td><td class='res'>PASS</td></tr><tr class='ok'><td>8</td><td>Model output &#x27;missing required fields&#x27;: raw text not shown</td><td class='exp'>no &quot;you have anemia&quot;</td><td class='act'>no &quot;you have anemia&quot;</td><td class='res'>PASS</td></tr><tr class='ok'><td>9</td><td>Invalid agent response: pipeline outcome</td><td class='exp'>fallback</td><td class='act'>fallback</td><td class='res'>PASS</td></tr><tr class='ok'><td>10</td><td>Invalid agent response: message</td><td class='exp'>Explanations are temporarily unavailable. Your extracted lab values are shown below.</td><td class='act'>Explanations are temporarily unavailable. Your extracted lab values are shown below.</td><td class='res'>PASS</td></tr><tr class='ok'><td>11</td><td>Invalid agent response: text displayed</td><td class='exp'>null</td><td class='act'>null</td><td class='res'>PASS</td></tr><tr class='ok'><td>12</td><td>Invalid safety status: pipeline outcome</td><td class='exp'>fallback</td><td class='act'>fallback</td><td class='res'>PASS</td></tr><tr class='ok'><td>13</td><td>Invalid safety status: text displayed</td><td class='exp'>null</td><td class='act'>null</td><td class='res'>PASS</td></tr><tr class='ok'><td>14</td><td>Invalid safety status: unvalidated text never returned</td><td class='exp'>no &quot;UNVALIDATED&quot;</td><td class='act'>no &quot;UNVALIDATED&quot;</td><td class='res'>PASS</td></tr></table>
+  <h2>Actual output: pipeline result (invalid safety status)</h2><pre>{&quot;status&quot;: &quot;fallback&quot;, &quot;final_response&quot;: null, &quot;message&quot;: &quot;We couldn&#x27;t confidently explain this result. Please verify the report with a healthcare professional.&quot;}</pre>
+  <div class='meta' style='margin-top:18px'>Commit dc9ea0eb1e on frontend | Python 3.13.9 | pytest 8.4.2 | prompt sha256 4cb8b9b05128505f | KB sha256 3b1d9dc56f8cc665 | executed 2026-10-02T17:20:05+05:30</div>
+</div></body></html>

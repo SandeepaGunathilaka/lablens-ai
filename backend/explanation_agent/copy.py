@@ -103,6 +103,27 @@ def unavailable_sections(task: ExplanationTask) -> dict[str, str]:
     }
 
 
+def conflict_sections(task: ExplanationTask) -> dict[str, str]:
+    return {
+        "what_it_measures": (
+            f"The report lists more than one different value for {task.test_name}, "
+            "so the values conflict."
+        ),
+        "explanation": factual_explanation(
+            task,
+            (
+                "Because the report lists conflicting values for this test, no single value "
+                "was interpreted. The recorded result was not changed."
+            ),
+        ),
+        "possible_meaning": (
+            f"{_NOT_ENOUGH} to describe a possible meaning while the values conflict. "
+            "Please check the original report for the correct value. No personal condition is assigned."
+        ),
+        "recommended_discussion": RECOMMENDED_DISCUSSION,
+    }
+
+
 def safe_fallback_sections(task: ExplanationTask) -> dict[str, str]:
     return {
         "what_it_measures": (
