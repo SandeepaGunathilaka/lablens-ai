@@ -24,8 +24,9 @@ SUPPORTED_SUFFIXES = {".pdf", ".png", ".jpg", ".jpeg"}
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 LOW_CONFIDENCE_THRESHOLD = 0.75
 
-# Aliases are intentionally a limited CBC/lipid vocabulary. An unmatched row is
-# still returned, flagged for verification, instead of being guessed or discarded.
+# Aliases are intentionally a limited CBC/lipid vocabulary. An unmatched row that
+# has a unit or reference range is still returned, flagged for verification,
+# instead of being guessed or discarded.
 TEST_ALIASES = {
     "Hemoglobin": ("hemoglobin", "haemoglobin", "hgb", "hb"),
     "WBC": ("wbc", "white blood cell", "white blood cells", "leukocyte"),
@@ -45,8 +46,20 @@ TEST_ALIASES = {
 CBC_TESTS = {"Hemoglobin", "WBC", "RBC", "Platelets", "Hematocrit", "MCV", "MCH", "MCHC", "RDW"}
 LIPID_TESTS = {"Total Cholesterol", "HDL Cholesterol", "LDL Cholesterol", "Triglycerides", "VLDL Cholesterol"}
 
-NUMBER_RE = re.compile(r"[<>]?\s*(\d+(?:\.\d+)?)")
-RANGE_RE = re.compile(r"(?<!\d)(\d+(?:\.\d+)?\s*(?:-|to)\s*\d+(?:\.\d+)?)(?!\d)", re.IGNORECASE)
+# A minus sign only counts when it starts a token, so "12-16" is not read as -16.
+NUMBER_RE = re.compile(r"(?P<qualifier><=|>=|[<>≤≥])?\s*(?P<number>(?<!\S)-\d+(?:\.\d+)?|\d+(?:\.\d+)?)")
+RANGE_RE = re.compile(
+    r"(?<!\d)(\d+(?:\.\d+)?\s*(?:-|to)\s*\d+(?:\.\d+)?|(?:<=|>=|[<>≤≥])\s*\d+(?:\.\d+)?)(?!\d)",
+    re.IGNORECASE,
+)
+# The lab's own high/low flag is an interpretation, not part of the unit.
+LAB_FLAG_RE = re.compile(r"^\s*(?:HH|LL|H|L|\*)(?=\s)")
+# Rows that carry a number but are patient details or report metadata, not results.
+NON_RESULT_LABEL_RE = re.compile(
+    r"^(?:patient|name|age|sex|gender|dob|date|time|tel|phone|mobile|lab\s*no|ref\s*no|"
+    r"sample|specimen|mrn|nic|bht|address|page)\b",
+    re.IGNORECASE,
+)
 UNIT_RE = re.compile(
     r"^\s*("
     r"(?:x?\s*10\s*\^?\s*-?\d+\s*/\s*[A-Za-z%]+)"
@@ -135,8 +148,17 @@ def _parse_report_line(line: str, named_entities: set[str], source_confidence: f
 
     # Table separators and OCR artefacts frequently appear after the label.
     label = re.sub(r"\s+", " ", label).strip()
-    value = float(number.group(1))
-    tail = line[number.end() :]
+    if NON_RESULT_LABEL_RE.match(label):
+        return None
+    # "Impression: ...", "Advice: ..." and similar lines are free text, even when they
+    # mention a test name; a genuine row has no colon before its value.
+    if ":" in label and not _canonical_test_name(label.split(":", 1)[0], named_entities)[1]:
+        return None
+
+    value = float(number.group("number"))
+    # "<40" is a bound and a negative count is impossible: neither is an exact reading.
+    is_exact_value = number.group("qualifier") is None and value >= 0
+    tail = LAB_FLAG_RE.sub("", line[number.end() :], count=1)
     range_match = RANGE_RE.search(tail)
     reference_range = range_match.group(1) if range_match else None
     unit_text = tail[: range_match.start()] if range_match else tail
@@ -144,6 +166,8 @@ def _parse_report_line(line: str, named_entities: set[str], source_confidence: f
     unit = re.sub(r"\s+", "", unit_match.group(1)) if unit_match else None
 
     test, is_known_test = _canonical_test_name(label, named_entities)
+    if not is_known_test and unit is None and reference_range is None:
+        return None
     confidence = source_confidence
     # A label outside the limited CBC/lipid vocabulary must be reviewed even if
     # its surrounding characters were read clearly.
@@ -151,10 +175,12 @@ def _parse_report_line(line: str, named_entities: set[str], source_confidence: f
     confidence += 0.08  # a numeric value was found in a label/value row
     confidence += 0.05 if unit else 0.0
     confidence += 0.10 if reference_range else 0.0
-    confidence = round(min(confidence, 0.99), 2)
+    confidence = min(confidence, 0.99 if is_exact_value else LOW_CONFIDENCE_THRESHOLD - 0.25)
+    confidence = round(confidence, 2)
     needs_verification = (
         confidence < LOW_CONFIDENCE_THRESHOLD
         or not is_known_test
+        or not is_exact_value
         or unit is None
         or reference_range is None
     )

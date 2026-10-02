@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset='utf-8'><title>RA-13a</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 28px; background: #f4f6fa; color: #1d2433; width: 1180px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px 28px; }
+h1 { margin: 0 0 4px; font-size: 24px; } h2 { font-size: 16px; margin: 22px 0 8px; color: #33415c; }
+.meta { color: #5c677d; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; }
+.badge.pass { background: #1b9e5a; } .badge.fail { background: #d64545; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { background: #24324d; color: #fff; text-align: left; padding: 8px 10px; }
+td { border-bottom: 1px solid #e3e7ef; padding: 7px 10px; vertical-align: top; word-break: break-word; }
+td:first-child { white-space: nowrap; }
+tr.ok td.res { color: #1b9e5a; font-weight: 700; } tr.bad td.res { color: #d64545; font-weight: 700; }
+tr.bad { background: #fff1f1; }
+td.exp { background: #eef5ff; } td.act { background: #f6fff4; } tr.bad td.act { background: #ffe3e3; }
+pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.kv td:first-child { width: 230px; font-weight: 600; color: #33415c; }
+.note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+.acc { background: #f0f3f9; border-left: 4px solid #24324d; padding: 8px 12px; font-size: 13px; }
+</style></head><body>
+<div class='card'>
+  <div style='display:flex;justify-content:space-between;align-items:center'>
+    <div><h1>RA-13a - Language / format variation</h1>
+    <div class='meta'>Control under test: Spelling variants map to one test; ambiguous number formats are flagged, not guessed</div>
+    <div class='meta'>Test: tests/document_validation/test_document_validation.py::test_ra13a_language_and_format_variation</div></div>
+    <div><span class='badge pass'>PASS</span>
+    <div class='meta' style='text-align:right;margin-top:6px'>7/7 checks met</div></div>
+  </div>
+  <h2>Expected result (assessment section 3)</h2><div class='acc'>British/abbreviated names give the same row; decimal-comma and thousands-separator values are flagged for verification.</div>
+  <h2>Test input</h2><table class='kv'><tr><td>US</td><td><pre>Hemoglobin 11.2 g/dL 12-16</pre></td></tr><tr><td>British</td><td><pre>Haemoglobin 11.2 g/dL 12-16</pre></td></tr><tr><td>HGB</td><td><pre>HGB 11.2 g/dL 12-16</pre></td></tr><tr><td>Hb</td><td><pre>Hb 11.2 g/dL 12-16</pre></td></tr><tr><td>&#x27;to&#x27; range</td><td><pre>Hemoglobin 11.2 g/dL 12 to 16</pre></td></tr><tr><td>decimal_comma_and_thousands</td><td><pre>Hemoglobin 11,2 g/dL 12-16
+Platelets 250,000 /uL 150,000-400,000</pre></td></tr></table>
+  <h2>Expected result vs actual result</h2>
+  <table><tr><th>#</th><th>Check</th><th>Expected result</th><th>Actual result</th><th>Result</th></tr><tr class='ok'><td>1</td><td>US: canonical test and value</td><td class='exp'>[&quot;Hemoglobin&quot;, 11.2]</td><td class='act'>[&quot;Hemoglobin&quot;, 11.2]</td><td class='res'>PASS</td></tr><tr class='ok'><td>2</td><td>British: canonical test and value</td><td class='exp'>[&quot;Hemoglobin&quot;, 11.2]</td><td class='act'>[&quot;Hemoglobin&quot;, 11.2]</td><td class='res'>PASS</td></tr><tr class='ok'><td>3</td><td>HGB: canonical test and value</td><td class='exp'>[&quot;Hemoglobin&quot;, 11.2]</td><td class='act'>[&quot;Hemoglobin&quot;, 11.2]</td><td class='res'>PASS</td></tr><tr class='ok'><td>4</td><td>Hb: canonical test and value</td><td class='exp'>[&quot;Hemoglobin&quot;, 11.2]</td><td class='act'>[&quot;Hemoglobin&quot;, 11.2]</td><td class='res'>PASS</td></tr><tr class='ok'><td>5</td><td>&#x27;to&#x27; range: canonical test and value</td><td class='exp'>[&quot;Hemoglobin&quot;, 11.2]</td><td class='act'>[&quot;Hemoglobin&quot;, 11.2]</td><td class='res'>PASS</td></tr><tr class='ok'><td>6</td><td>Decimal comma &#x27;11,2&#x27; flagged</td><td class='exp'>true</td><td class='act'>true</td><td class='res'>PASS</td></tr><tr class='ok'><td>7</td><td>Thousands separator &#x27;250,000&#x27; flagged</td><td class='exp'>true</td><td class='act'>true</td><td class='res'>PASS</td></tr></table>
+  <h2>Actual output: Extraction (spelling variants)</h2><pre>{&quot;US&quot;: {&quot;test&quot;: &quot;Hemoglobin&quot;, &quot;value&quot;: 11.2, &quot;unit&quot;: &quot;g/dL&quot;, &quot;reference_range&quot;: &quot;12-16&quot;, &quot;confidence&quot;: 0.99, &quot;needs_verification&quot;: false}, &quot;British&quot;: {&quot;test&quot;: &quot;Hemoglobin&quot;, &quot;value&quot;: 11.2, &quot;unit&quot;: &quot;g/dL&quot;, &quot;reference_range&quot;: &quot;12-16&quot;, &quot;confidence&quot;: 0.99, &quot;needs_verification&quot;: false}, &quot;HGB&quot;: {&quot;test&quot;: &quot;Hemoglobin&quot;, &quot;value&quot;: 11.2, &quot;unit&quot;: &quot;g/dL&quot;, &quot;reference_range&quot;: &quot;12-16&quot;, &quot;confidence&quot;: 0.99, &quot;needs_verification&quot;: false}, &quot;Hb&quot;: {&quot;test&quot;: &quot;Hemoglobin&quot;, &quot;value&quot;: 11.2, &quot;unit&quot;: &quot;g/dL&quot;, &quot;reference_range&quot;: &quot;12-16&quot;, &quot;confidence&quot;: 0.99, &quot;needs_verification&quot;: false}, &quot;&#x27;to&#x27; range&quot;: {&quot;test&quot;: &quot;Hemoglobin&quot;, &quot;value&quot;: 11.2, &quot;unit&quot;: &quot;g/dL&quot;, &quot;reference_range&quot;: &quot;12 to 16&quot;, &quot;confidence&quot;: 0.99, &quot;needs_verification&quot;: false}}</pre><h2>Actual output: Extraction (decimal comma / thousands)</h2><pre>[{&quot;test&quot;: &quot;Hemoglobin&quot;, &quot;value&quot;: 11.0, &quot;unit&quot;: null, &quot;reference_range&quot;: &quot;12-16&quot;, &quot;confidence&quot;: 0.99, &quot;needs_verification&quot;: true}, {&quot;test&quot;: &quot;Platelets&quot;, &quot;value&quot;: 250.0, &quot;unit&quot;: null, &quot;reference_range&quot;: &quot;000-400&quot;, &quot;confidence&quot;: 0.99, &quot;needs_verification&quot;: true}]</pre><div class='note'>&#x27;11,2&#x27; is read as 11 and &#x27;250,000&#x27; as 250, but both rows are flagged and shown with a verification warning.</div>
+  <div class='meta' style='margin-top:18px'>Commit f90155b55f on frontend | Python 3.13.9 | pytest 8.4.2 | Tesseract 5.4.0.20240606 | en_core_web_sm 3.8.0 (spaCy 3.8.16) | executed 2026-10-02T19:29:36+05:30</div>
+</div></body></html>

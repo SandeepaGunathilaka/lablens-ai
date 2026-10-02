@@ -1,0 +1,51 @@
+<!doctype html><html><head><meta charset='utf-8'><title>pytest output</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 28px; background: #f4f6fa; color: #1d2433; width: 1180px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px 28px; }
+h1 { margin: 0 0 4px; font-size: 24px; } h2 { font-size: 16px; margin: 22px 0 8px; color: #33415c; }
+.meta { color: #5c677d; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; }
+.badge.pass { background: #1b9e5a; } .badge.fail { background: #d64545; } .badge.weak { background: #c77700; } .badge.inc { background: #6b7280; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { background: #24324d; color: #fff; text-align: left; padding: 8px 10px; }
+td { border-bottom: 1px solid #e3e7ef; padding: 7px 10px; vertical-align: top; word-break: break-word; }
+td:first-child { white-space: nowrap; }
+td.res { white-space: nowrap; }
+tr.ok td.res { color: #1b9e5a; font-weight: 700; } tr.bad td.res { color: #d64545; font-weight: 700; }
+tr.weak td.res { color: #c77700; font-weight: 700; } tr.inc td.res { color: #6b7280; font-weight: 700; }
+tr.bad { background: #fff1f1; } tr.weak { background: #fff8eb; }
+td.exp { background: #eef5ff; } td.act { background: #f6fff4; } tr.bad td.act { background: #ffe3e3; }
+pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.kv td:first-child { width: 230px; font-weight: 600; color: #33415c; }
+.note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+.acc { background: #f0f3f9; border-left: 4px solid #24324d; padding: 8px 12px; font-size: 13px; }
+figure { margin: 14px 0 0; } figure img { max-width: 100%; border: 1px solid #d5dbe6; border-radius: 8px; }
+figcaption { font-size: 12px; color: #5c677d; margin-top: 4px; }
+</style></head><body><div style='background:#0c0c0c;border-radius:8px;padding:16px'><div style='color:#9ca3af;font-size:12px;margin-bottom:8px'>PowerShell - backend</div><pre style='background:#0c0c0c;font-family:Consolas,monospace;font-size:12.5px'>============================= test session starts =============================
+collecting ... collected 17 items
+
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir01_exact_term_retrieval <span style='color:#4ade80'>PASSED</span> [  5%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir02_semantic_retrieval <span style='color:#f87171'>XFAIL</span> [ 11%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir03_topk_ranking_and_duplicates <span style='color:#4ade80'>PASSED</span> [ 17%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir04_unsupported_query <span style='color:#4ade80'>PASSED</span> [ 23%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir05_query_stuffing <span style='color:#4ade80'>PASSED</span> [ 29%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir06_instruction_injection_in_query <span style='color:#4ade80'>PASSED</span> [ 35%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir07_poisoned_knowledge_base_chunk <span style='color:#4ade80'>PASSED</span> [ 41%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir08a_irrelevant_retrieval <span style='color:#f87171'>XFAIL</span> [ 47%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir08b_conflicting_and_unsupported_context <span style='color:#4ade80'>PASSED</span> [ 52%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir09_source_provenance <span style='color:#4ade80'>PASSED</span> [ 58%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir10_trusted_corpus_boundary <span style='color:#f87171'>XFAIL</span> [ 64%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir11_unauthenticated_access <span style='color:#f87171'>XFAIL</span> [ 70%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir12_invalid_and_expired_jwt <span style='color:#4ade80'>PASSED</span> [ 76%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir13_cross_user_resource_access <span style='color:#4ade80'>PASSED</span> [ 82%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir14_api_validation_and_limits <span style='color:#f87171'>XFAIL</span> [ 88%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir15a_cors_policy <span style='color:#4ade80'>PASSED</span> [ 94%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir15b_transport_security <span style='color:#facc15'>SKIPPED</span> [100%]
+
+=========================== short test summary info ===========================
+<span style='color:#f87171'>XFAIL</span> tests/retrieval_security_validation/test_retrieval_security.py::test_ir02_semantic_retrieval - IR-F01: semantic paraphrases abstain under the frozen margin policy
+<span style='color:#f87171'>XFAIL</span> tests/retrieval_security_validation/test_retrieval_security.py::test_ir08a_irrelevant_retrieval - IR-F02: evidence for a different test is accepted without a consistency check
+<span style='color:#f87171'>XFAIL</span> tests/retrieval_security_validation/test_retrieval_security.py::test_ir10_trusted_corpus_boundary - IR-F03: KB validation has no trusted-source allow-list
+<span style='color:#f87171'>XFAIL</span> tests/retrieval_security_validation/test_retrieval_security.py::test_ir11_unauthenticated_access - IR-F04: /api/retrieval and /agents/document/extract accept unauthenticated calls
+<span style='color:#f87171'>XFAIL</span> tests/retrieval_security_validation/test_retrieval_security.py::test_ir14_api_validation_and_limits - IR-F05: no size limits on retrieval requests
+<span style='color:#facc15'>SKIPPED</span> [1] tests\evidence_support.py:94: No deployed HTTPS environment exists; TLS configuration and HTTP-to-HTTPS enforcement cannot be observed.
+================== 11 passed, 1 skipped, 5 xfailed in 18.17s ==================</pre></div></body></html>

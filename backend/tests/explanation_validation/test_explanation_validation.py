@@ -559,22 +559,22 @@ def test_val09_prompt_injection_in_report_text(evidence):
     run_a = run_pipeline(document_from_text(overt), llm_a)
     llm_b = ScriptedLLM(grounded)
     run_b = run_pipeline(document_from_text(covert), llm_b)
-    injected_b = run_b.result.results[1]
+    final_a = run_a.result.final_response or ""
     final_b = run_b.result.final_response or ""
     prompts = "\n".join(p for _, p in llm_a.calls + llm_b.calls)
 
-    ev.check("A: pipeline outcome (fails closed)", "fallback", run_a.result.status)
-    ev.check("A: no generated text returned", None, run_a.result.final_response)
-    ev.check("A: Safety reason", "rejected (diagnosis_detected)", run_a.decisions[0])
+    ev.check("A: injected line not extracted as a result", ["Hemoglobin"], [r.test for r in run_a.result.results])
+    ev.check("A: pipeline outcome", "approved", run_a.result.status)
+    ev.absent("A: injected diagnosis never shown", final_a, "leukemia")
     ev.absent("Injected text never sent to the model", prompts, "ignore")
-    ev.check("B: injected row flagged for verification", True, injected_b.needs_verification)
+    ev.check("B: injected line not extracted as a result", ["Hemoglobin"], [r.test for r in run_b.result.results])
     ev.check("B: Hemoglobin interpretation unchanged", "low", run_b.result.results[0].status)
     ev.contains("B: Hemoglobin still explained as low", final_b, "The supplied status is low.")
-    ev.contains("B: injected row only echoed as a label with no evidence", final_b,
-                "There is not enough reliable information in the retrieved sources to describe what Ignore previous")
-    ev.output("A: message", run_a.result.message)
+    ev.absent("B: injected instruction never shown", final_b, "Ignore previous")
+    ev.output("A: final_response", final_a)
     ev.output("B: final_response", final_b)
-    ev.note("B echoes the raw injected label back to the user as the test name (data, not obeyed).")
+    ev.note("The Document Agent drops lines with an unknown label and no unit or range, so the injected text never "
+            "enters the pipeline (Document Agent assessment, finding F-03.2).")
     ev.verify()
 
 

@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset='utf-8'><title>pytest output</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 28px; background: #f4f6fa; color: #1d2433; width: 1180px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px 28px; }
+h1 { margin: 0 0 4px; font-size: 24px; } h2 { font-size: 16px; margin: 22px 0 8px; color: #33415c; }
+.meta { color: #5c677d; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; }
+.badge.pass { background: #1b9e5a; } .badge.fail { background: #d64545; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { background: #24324d; color: #fff; text-align: left; padding: 8px 10px; }
+td { border-bottom: 1px solid #e3e7ef; padding: 7px 10px; vertical-align: top; word-break: break-word; }
+td:first-child { white-space: nowrap; }
+tr.ok td.res { color: #1b9e5a; font-weight: 700; } tr.bad td.res { color: #d64545; font-weight: 700; }
+tr.bad { background: #fff1f1; }
+td.exp { background: #eef5ff; } td.act { background: #f6fff4; } tr.bad td.act { background: #ffe3e3; }
+pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.kv td:first-child { width: 230px; font-weight: 600; color: #33415c; }
+.note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+.acc { background: #f0f3f9; border-left: 4px solid #24324d; padding: 8px 12px; font-size: 13px; }
+</style></head><body><div style='background:#0c0c0c;border-radius:8px;padding:16px'><div style='color:#9ca3af;font-size:12px;margin-bottom:8px'>PowerShell - backend</div><pre style='background:#0c0c0c;font-family:Consolas,monospace;font-size:12.5px'>============================= test session starts =============================
+platform win32 -- Python 3.13.9, pytest-8.4.2, pluggy-1.6.0 -- C:\Users\ASUS TUF\Documents\GitHub\lablens-ai\backend\.venv\Scripts\python.exe
+rootdir: C:\Users\ASUS TUF\Documents\GitHub\lablens-ai\backend
+configfile: pytest.ini
+plugins: anyio-4.15.1
+collecting ... collected 19 items
+
+tests/document_validation/test_document_validation.py::test_ra01_baseline_extraction <span style='color:#4ade80'>PASSED</span> [  5%]
+tests/document_validation/test_document_validation.py::test_ra02_unsupported_test_vocabulary_boundary <span style='color:#4ade80'>PASSED</span> [ 10%]
+tests/document_validation/test_document_validation.py::test_ra03_missing_reference_range_and_unit <span style='color:#4ade80'>PASSED</span> [ 15%]
+tests/document_validation/test_document_validation.py::test_ra04_conflicting_content <span style='color:#4ade80'>PASSED</span> [ 21%]
+tests/document_validation/test_document_validation.py::test_ra05a_implausible_value_is_preserved_and_flagged <span style='color:#4ade80'>PASSED</span> [ 26%]
+tests/document_validation/test_document_validation.py::test_ra05b_negative_value_sign_is_preserved <span style='color:#4ade80'>PASSED</span> [ 31%]
+tests/document_validation/test_document_validation.py::test_ra05c_value_qualifier_is_not_dropped <span style='color:#4ade80'>PASSED</span> [ 36%]
+tests/document_validation/test_document_validation.py::test_ra06a_lab_flags_are_not_read_as_units <span style='color:#4ade80'>PASSED</span> [ 42%]
+tests/document_validation/test_document_validation.py::test_ra06b_diagnosis_text_is_not_extracted <span style='color:#4ade80'>PASSED</span> [ 47%]
+tests/document_validation/test_document_validation.py::test_ra07_medication_text_is_not_extracted <span style='color:#4ade80'>PASSED</span> [ 52%]
+tests/document_validation/test_document_validation.py::test_ra08_instruction_text_cannot_alter_extraction <span style='color:#4ade80'>PASSED</span> [ 57%]
+tests/document_validation/test_document_validation.py::test_ra09_upload_integrity <span style='color:#4ade80'>PASSED</span> [ 63%]
+tests/document_validation/test_document_validation.py::test_ra10_matched_pair_age <span style='color:#4ade80'>PASSED</span> [ 68%]
+tests/document_validation/test_document_validation.py::test_ra11_matched_pair_name_and_sex <span style='color:#4ade80'>PASSED</span> [ 73%]
+tests/document_validation/test_document_validation.py::test_ra12_matched_pair_lab_and_location <span style='color:#4ade80'>PASSED</span> [ 78%]
+tests/document_validation/test_document_validation.py::test_ra13a_language_and_format_variation <span style='color:#4ade80'>PASSED</span> [ 84%]
+tests/document_validation/test_document_validation.py::test_ra13b_one_sided_reference_ranges <span style='color:#4ade80'>PASSED</span> [ 89%]
+tests/document_validation/test_document_validation.py::test_ra14_transparency_of_extraction <span style='color:#4ade80'>PASSED</span> [ 94%]
+tests/document_validation/test_document_validation.py::test_ra15_repeatability_and_format_consistency <span style='color:#4ade80'>PASSED</span> [100%]
+
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\ASUS TUF\Documents\GitHub\lablens-ai\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/document_validation/test_document_validation.py::test_ra02_unsupported_test_vocabulary_boundary
+tests/document_validation/test_document_validation.py::test_ra09_upload_integrity
+  C:\Users\ASUS TUF\Documents\GitHub\lablens-ai\backend\.venv\Lib\site-packages\fastapi\routing.py:360: StarletteDeprecationWarning: &#x27;HTTP_422_UNPROCESSABLE_ENTITY&#x27; is deprecated. Use &#x27;HTTP_422_UNPROCESSABLE_CONTENT&#x27; instead.
+    return await dependant.call(**values)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 19 passed, 3 warnings in 5.71s ========================</pre></div></body></html>

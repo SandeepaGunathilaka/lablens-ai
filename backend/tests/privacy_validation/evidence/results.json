@@ -1,0 +1,993 @@
+{
+  "environment": {
+    "git_branch": "frontend",
+    "git_commit": "f90155b55f695c1e4040772ad9677a949ac5e56d",
+    "working_tree": "uncommitted changes present",
+    "os": "Windows-11-10.0.26200-SP0",
+    "python": "3.13.9",
+    "pytest": "8.4.2",
+    "executed_at": "2026-10-02T21:13:46+05:30",
+    "component": "Authentication, authorization, audit logging, saved reports/chats (FastAPI backend) and the React frontend",
+    "backend_version": "LabLens AI API 0.1.0 (FastAPI 0.142.2)",
+    "auth": "JWT HS256, expiry 60 min (python-jose 3.5.0); bcrypt via passlib 1.7.4",
+    "database": "mongomock 4.3.0 (in-memory MongoDB; Atlas itself not contacted)",
+    "explanation_provider": "template (deterministic, no external model calls)",
+    "browser": "Microsoft Edge via Playwright (frontend served by Vite dev server)"
+  },
+  "records": [
+    {
+      "val_id": "PRIV-01",
+      "title": "Password exposure in API responses",
+      "control": "UserPublic/TokenResponse response models; bcrypt storage",
+      "acceptance": "Response body never contains password or password_hash in either call.",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv01_no_password_in_responses",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "register": "{\"name\": \"Kasun Edirisinghe\", \"email\": \"kasun@example.com\", \"password\": \"Str0ng-Passw0rd!\"}",
+        "login": "{\"email\": \"kasun@example.com\", \"password\": \"Str0ng-Passw0rd!\"}"
+      },
+      "checks": [
+        {
+          "description": "Register: status",
+          "expected": "201",
+          "actual": "201",
+          "passed": true
+        },
+        {
+          "description": "Register: response fields",
+          "expected": "[\"email\", \"name\", \"user_id\"]",
+          "actual": "[\"email\", \"name\", \"user_id\"]",
+          "passed": true
+        },
+        {
+          "description": "Login: response fields",
+          "expected": "[\"access_token\", \"expires_in\", \"token_type\"]",
+          "actual": "[\"access_token\", \"expires_in\", \"token_type\"]",
+          "passed": true
+        },
+        {
+          "description": "Register: no 'password' key or value",
+          "expected": "no \"password\"",
+          "actual": "no \"password\"",
+          "passed": true
+        },
+        {
+          "description": "Register: no plaintext password",
+          "expected": "no \"Str0ng-Passw0rd!\"",
+          "actual": "no \"Str0ng-Passw0rd!\"",
+          "passed": true
+        },
+        {
+          "description": "Register: no bcrypt hash",
+          "expected": "no \"$2b$\"",
+          "actual": "no \"$2b$\"",
+          "passed": true
+        },
+        {
+          "description": "Login: no 'password' key or value",
+          "expected": "no \"password\"",
+          "actual": "no \"password\"",
+          "passed": true
+        },
+        {
+          "description": "Login: no plaintext password",
+          "expected": "no \"Str0ng-Passw0rd!\"",
+          "actual": "no \"Str0ng-Passw0rd!\"",
+          "passed": true
+        },
+        {
+          "description": "Login: no bcrypt hash",
+          "expected": "no \"$2b$\"",
+          "actual": "no \"$2b$\"",
+          "passed": true
+        },
+        {
+          "description": "Database: plaintext never stored",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "description": "Database: bcrypt hash stored",
+          "expected": "$2b$12$...",
+          "actual": "$2b$12$...",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "register response": "{\"user_id\": \"4b1b6b29-073c-488d-aa03-0b1b03ebc4e2\", \"name\": \"Kasun Edirisinghe\", \"email\": \"kasun@example.com\"}",
+        "login response (token shortened)": "{\"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5...\", \"token_type\": \"bearer\", \"expires_in\": 3600}"
+      },
+      "notes": [],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-02",
+      "title": "Account-existence leakage via register vs. login",
+      "control": "Duplicate check on register; single error on login",
+      "acceptance": "Register leaks existence via 409 (expected, common pattern). Login must return the identical 401 message for both wrong-password and unknown-email cases.",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv02_account_existence_leakage",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "registered": "dup@example.com",
+        "second_register": "dup@example.com",
+        "login_wrong_password": "dup@example.com / Wrong-Passw0rd!",
+        "login_unknown_email": "ghost@example.com / Wrong-Passw0rd!"
+      },
+      "checks": [
+        {
+          "description": "Second register (case-insensitive): status/detail",
+          "expected": "409 Email is already registered",
+          "actual": "409 Email is already registered",
+          "passed": true
+        },
+        {
+          "description": "Login wrong password: status/detail",
+          "expected": "401 Invalid email or password",
+          "actual": "401 Invalid email or password",
+          "passed": true
+        },
+        {
+          "description": "Login unknown email: status/detail",
+          "expected": "401 Invalid email or password",
+          "actual": "401 Invalid email or password",
+          "passed": true
+        },
+        {
+          "description": "Login bodies byte-identical",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "description": "Login WWW-Authenticate headers identical",
+          "expected": "Bearer",
+          "actual": "Bearer",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "wrong password response": "{\"detail\": \"Invalid email or password\"}",
+        "unknown email response": "{\"detail\": \"Invalid email or password\"}"
+      },
+      "notes": [
+        "The 409 on registration confirms that an email is registered. The assessment accepts this as a common pattern; it lets an attacker enumerate accounts through /auth/register rather than /auth/login."
+      ],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-03",
+      "title": "User enumeration via login response timing",
+      "control": "pwd_context.dummy_verify() for unknown emails",
+      "acceptance": "Response time difference between the two cases is not reliably distinguishable (dummy hash verification should mask it).",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv03_login_timing",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "known_email": "timing@example.com (wrong password)",
+        "unknown_email": "nobody-xyz@example.com",
+        "repetitions": "5",
+        "order": "interleaved, after one warm-up call each"
+      },
+      "checks": [
+        {
+          "description": "Both cases spend a bcrypt verification",
+          "expected": "both > 50 ms",
+          "actual": "known 194 ms, unknown 193 ms",
+          "passed": true
+        },
+        {
+          "description": "Mean difference below 10% of the mean",
+          "expected": "< 10%",
+          "actual": "0.4% (0.9 ms)",
+          "passed": true
+        },
+        {
+          "description": "Timing ranges overlap",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "known email, wrong password (ms)": "[192.1, 204.0, 191.4, 192.1, 191.2]",
+        "unknown email (ms)": "[198.3, 192.5, 191.4, 191.9, 192.3]",
+        "summary": "{\"known_mean_ms\": 194.2, \"unknown_mean_ms\": 193.3, \"difference_ms\": 0.9, \"largest_stdev_ms\": 5.5}"
+      },
+      "notes": [],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-06",
+      "title": "Cross-user audit log access",
+      "control": "GET /api/audit/{task_id} filtered by the token's user_id",
+      "acceptance": "Empty list returned, identical to an unknown task_id. No indication the task exists for another user.",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv06_cross_user_audit_access",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "user_A": "225e1b04-42c4-4f17-8ee8-7985fcb9d68a",
+        "user_B": "6bdfccd3-c3d1-4645-a13f-044691ca5664",
+        "task_of_B": "4775474c-4605-4ac6-bcb4-cb65248772e2",
+        "unknown_task": "no-such-task"
+      },
+      "checks": [
+        {
+          "description": "B reads own task: entries returned",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "description": "A reads B's task",
+          "expected": "200 []",
+          "actual": "200 []",
+          "passed": true
+        },
+        {
+          "description": "A reads unknown task",
+          "expected": "200 []",
+          "actual": "200 []",
+          "passed": true
+        },
+        {
+          "description": "Responses indistinguishable",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "B's own audit trail (agent/action/status)": "[\"document_agent.extract: success\", \"coordinator.compute_status: success\", \"retrieval_agent.retrieve: success\", \"explanation_agent.explain: success\", \"safety_agent.validate: approved\", \"coordinator.analyze_report: approved\"]"
+      },
+      "notes": [],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-07",
+      "title": "Cross-user Safety endpoint access",
+      "control": "user_id in body must match the token subject",
+      "acceptance": "403 Forbidden, request rejected before any checks run.",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv07_cross_user_safety_endpoint",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "token_of": "A",
+        "payload_user_id": "90dcf4c1-b0eb-4297-91f5-057f2dff77a0 (B)"
+      },
+      "checks": [
+        {
+          "description": "Status",
+          "expected": "403",
+          "actual": "403",
+          "passed": true
+        },
+        {
+          "description": "Detail",
+          "expected": "Not allowed for this user",
+          "actual": "Not allowed for this user",
+          "passed": true
+        },
+        {
+          "description": "No safety decision logged (rejected before checks ran)",
+          "expected": "0",
+          "actual": "0",
+          "passed": true
+        },
+        {
+          "description": "Control: A with own user_id",
+          "expected": "200",
+          "actual": "200",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "response": "{\"detail\": \"Not allowed for this user\"}"
+      },
+      "notes": [],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-08",
+      "title": "Audit log content does not leak PII or patient data",
+      "control": "log_event callers record ids, outcomes and counts only",
+      "acceptance": "No password, password hash, lab values, draft explanation text, or other patient content appears in any audit entry, only IDs, agent names, statuses and counts.",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv08_audit_log_content",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "actions": "[\"register\", \"login\", \"upload + analysis of a CBC/lipid report\", \"chat question\", \"safety validate\", \"failed upload (empty file)\"]",
+        "report_text": "Patient: Nimal Perera\nHemoglobin 11.2 g/dL 12.0-15.5\nPlatelets 162 10^3/uL 150-400",
+        "question": "Is my platelet count of 162 dangerous?"
+      },
+      "checks": [
+        {
+          "description": "Audit entries written",
+          "expected": "> 0",
+          "actual": "12",
+          "passed": true
+        },
+        {
+          "description": "No password in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No password hash in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No email in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No user name in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No patient name in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No file name in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No hemoglobin value in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No platelet value in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No test name in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No question text in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No draft/explanation text in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "No disclaimer in any entry",
+          "expected": "absent",
+          "actual": "absent",
+          "passed": true
+        },
+        {
+          "description": "Top-level fields",
+          "expected": "[\"action\", \"agent\", \"details\", \"log_id\", \"report_id\", \"status\", \"task_id\", \"timestamp\", \"user_id\"]",
+          "actual": "[\"action\", \"agent\", \"details\", \"log_id\", \"report_id\", \"status\", \"task_id\", \"timestamp\", \"user_id\"]",
+          "passed": true
+        },
+        {
+          "description": "Authentication events (register/login) audited",
+          "expected": "not required for this test",
+          "actual": "none written",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "detail keys used": "[\"attempt\", \"checks\", \"computed\", \"error\", \"extraction_method\", \"generation_modes\", \"implausible\", \"outcome\", \"result_count\", \"tests_requested\", \"tests_with_sources\", \"unknown\"]",
+        "sample entries": "[{\"log_id\": \"d1b4f17d-c5fc-4720-9096-5a2a2884f8fb\", \"task_id\": \"46dd2cf4-6c98-4fdd-9ff0-1cf8651bf972\", \"report_id\": \"095d16a2-8663-4407-a3f7-ab1490da10e9\", \"user_id\": \"c2a5cc11-b5f0-492f-a07b-61d8333cbf25\", \"agent\": \"document_agent\", \"action\": \"extract\", \"status\": \"success\", \"timestamp\": \"2026-10-02T15:42:46.446107+00:00\", \"details\": {\"extraction_method\": \"pdf_text\", \"result_count\": 2}}, {\"log_id\": \"fc482543-57bd-47b3-bf27-bbbdd731c992\", \"task_id\": \"46dd2cf4-6c98-4fdd-9ff0-1cf8651bf972\", \"report_id\": \"095d16a2-8663-4407-a3f7-ab1490da10e9\", \"user_id\": \"c2a5cc11-b5f0-492f-a07b-61d8333cbf25\", \"agent\": \"coordinator\", \"action\": \"compute_status\", \"status\": \"success\", \"timestamp\": \"2026-10-02T15:42:46.446277+00:00\", \"details\": {\"computed\": 2, \"unknown\": 0, \"implausible\": 0}}, {\"log_id\": \"aedb3139-c20d-45d6-beb7-61e96f1d30de\", \"task_id\": \"46dd2cf4-6c98-4fdd-9ff0-1cf8651bf972\", \"report_id\": \"095d16a2-8663-4407-a3f7-ab1490da10e9\", \"user_id\": \"c2a5cc11-b5f0-492f-a07b-61d8333cbf25\", \"agent\": \"retrieval_agent\", \"action\": \"retrieve\", \"status\": \"success\", \"timestamp\": \"2026-10-02T15:42:46.446520+00:00\", \"details\": {\"tests_requested\": 2, \"tests_with_sources\": 2}}, {\"log_id\": \"5510fc39-69c6-418b-91bb-359c644ab998\", \"task_id\": \"46dd2cf4-6c98-4fdd-9ff0-1cf8651bf972\", \"report_id\": \"095d16a2-8663-4407-a3f7-ab1490da10e9\", \"user_id\": \"c2a5cc11-b5f0-492f-a07b-61d8333cbf25\", \"agent\": \"explanation_agent\", \"action\": \"explain\", \"status\": \"success\", \"timestamp\": \"2026-10-02T15:42:46.447227+00:00\", \"details\": {\"attempt\": 1, \"generation_modes\": {\"template\": 2}}}]"
+      },
+      "notes": [
+        "No entry is written for register or login, so the audit trail cannot show failed-login bursts (see PRIV-15)."
+      ],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-09",
+      "title": "Saved reports/chats endpoint authorization",
+      "control": "Every reports/chats query filtered by the token's user_id",
+      "acceptance": "Request is rejected or returns no data belonging to User B; access is scoped to the authenticated user only.",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv09_saved_reports_and_chats_authorization",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "attacker": "User A (valid token)",
+        "owner": "User B",
+        "report_id": "a2d9194f-f60c-491a-8733-2acf01d6ea27",
+        "chat_id": "58be7381-2b42-4de6-9ce3-325a286487ab"
+      },
+      "checks": [
+        {
+          "description": "A: list reports",
+          "expected": "200 []",
+          "actual": "200 []",
+          "passed": true
+        },
+        {
+          "description": "A: list chats",
+          "expected": "200 []",
+          "actual": "200 []",
+          "passed": true
+        },
+        {
+          "description": "A: list chats for B's report",
+          "expected": "200 []",
+          "actual": "200 []",
+          "passed": true
+        },
+        {
+          "description": "A: read report",
+          "expected": "404 (same as unknown id)",
+          "actual": "404 Report not found",
+          "passed": true
+        },
+        {
+          "description": "A: download original file",
+          "expected": "404 (same as unknown id)",
+          "actual": "404 File not found",
+          "passed": true
+        },
+        {
+          "description": "A: rename report",
+          "expected": "404 (same as unknown id)",
+          "actual": "404 Report not found",
+          "passed": true
+        },
+        {
+          "description": "A: delete stored file",
+          "expected": "404 (same as unknown id)",
+          "actual": "404 Report not found",
+          "passed": true
+        },
+        {
+          "description": "A: delete report",
+          "expected": "404 (same as unknown id)",
+          "actual": "404 Report not found",
+          "passed": true
+        },
+        {
+          "description": "A: read chat",
+          "expected": "404 (same as unknown id)",
+          "actual": "404 Chat not found",
+          "passed": true
+        },
+        {
+          "description": "A: rename chat",
+          "expected": "404 (same as unknown id)",
+          "actual": "404 Chat not found",
+          "passed": true
+        },
+        {
+          "description": "A: send message in B's chat",
+          "expected": "404 (same as unknown id)",
+          "actual": "404 Chat not found",
+          "passed": true
+        },
+        {
+          "description": "A: open chat on B's report",
+          "expected": "404 (same as unknown id)",
+          "actual": "404 Report not found",
+          "passed": true
+        },
+        {
+          "description": "A: delete chat",
+          "expected": "404 (same as unknown id)",
+          "actual": "404 Chat not found",
+          "passed": true
+        },
+        {
+          "description": "B's data intact",
+          "expected": "[1, 1, true]",
+          "actual": "[1, 1, true]",
+          "passed": true
+        }
+      ],
+      "outputs": {},
+      "notes": [],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-10",
+      "title": "CORS configuration",
+      "control": "CORSMiddleware in main.py",
+      "acceptance": "CORS allows only the expected frontend origin(s), not a wildcard with credentials enabled.",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv10_cors_configuration",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "configured_origins": "[\"http://localhost:5173\", \"http://127.0.0.1:5173\", \"http://localhost:8080\", \"http://127.0.0.1:8080\"]",
+        "allow_credentials": "true",
+        "arbitrary_origin": "https://attacker.example"
+      },
+      "checks": [
+        {
+          "description": "No wildcard origin",
+          "expected": "false",
+          "actual": "false",
+          "passed": true
+        },
+        {
+          "description": "Configured origins are local frontend dev servers",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "description": "Arbitrary origin: preflight",
+          "expected": "400, no Access-Control-Allow-Origin",
+          "actual": "400, no Access-Control-Allow-Origin",
+          "passed": true
+        },
+        {
+          "description": "Arbitrary origin: simple request carries no CORS grant",
+          "expected": "null",
+          "actual": "null",
+          "passed": true
+        },
+        {
+          "description": "Approved origin: credentials allowed for that origin only",
+          "expected": "[\"http://localhost:5173\", \"true\"]",
+          "actual": "[\"http://localhost:5173\", \"true\"]",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "arbitrary-origin preflight": "400 Disallowed CORS origin"
+      },
+      "notes": [],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-11",
+      "title": "Internal error information leakage",
+      "control": "Starlette's generic 500 handler; JSON-safe 422 handler",
+      "acceptance": "No stack trace, file path, environment variable name, or internal library detail is present in the response sent to the client.",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv11_internal_error_leakage",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "case_1": "GET /api/reports while MongoDB is unreachable (ServerSelectionTimeoutError with host/user/path)",
+        "case_2": "POST /explanation with value NaN (input the validators reject)",
+        "case_3": "POST /auth/register with a 7-character password"
+      },
+      "checks": [
+        {
+          "description": "Database down: status/body",
+          "expected": "500 Internal Server Error",
+          "actual": "500 Internal Server Error",
+          "passed": true
+        },
+        {
+          "description": "Database down: no 'Traceback'",
+          "expected": "no \"Traceback\"",
+          "actual": "no \"Traceback\"",
+          "passed": true
+        },
+        {
+          "description": "Database down: no 'mongodb.net'",
+          "expected": "no \"mongodb.net\"",
+          "actual": "no \"mongodb.net\"",
+          "passed": true
+        },
+        {
+          "description": "Database down: no 'lablens_app'",
+          "expected": "no \"lablens_app\"",
+          "actual": "no \"lablens_app\"",
+          "passed": true
+        },
+        {
+          "description": "Database down: no 'database.py'",
+          "expected": "no \"database.py\"",
+          "actual": "no \"database.py\"",
+          "passed": true
+        },
+        {
+          "description": "Database down: no 'C:\\'",
+          "expected": "no \"C:\\\"",
+          "actual": "no \"C:\\\"",
+          "passed": true
+        },
+        {
+          "description": "Database down: no 'MONGODB_URI'",
+          "expected": "no \"MONGODB_URI\"",
+          "actual": "no \"MONGODB_URI\"",
+          "passed": true
+        },
+        {
+          "description": "Database down: no 'pymongo'",
+          "expected": "no \"pymongo\"",
+          "actual": "no \"pymongo\"",
+          "passed": true
+        },
+        {
+          "description": "NaN value: controlled 422 (not 500)",
+          "expected": "422",
+          "actual": "422",
+          "passed": true
+        },
+        {
+          "description": "NaN value: no traceback",
+          "expected": "no \"Traceback\"",
+          "actual": "no \"Traceback\"",
+          "passed": true
+        },
+        {
+          "description": "Short password: status",
+          "expected": "422",
+          "actual": "422",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "database-down response": "Internal Server Error",
+        "short-password 422 body": "{\"detail\": [{\"type\": \"string_too_short\", \"loc\": [\"body\", \"password\"], \"msg\": \"String should have at least 8 characters\", \"input\": \"Abc123!\", \"ctx\": {\"min_length\": 8}}]}"
+      },
+      "notes": [
+        "Validation errors use FastAPI's default 422 body, which echoes the rejected input - here the attempted password back to the same client. It is not shown to anyone else, but proxies or browser logs that record response bodies would capture it."
+      ],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-12",
+      "title": "Expired token handling",
+      "control": "exp claim verified by python-jose on every protected route",
+      "acceptance": "401 returned, with a generic message; no information about why the token failed beyond \"invalid/expired\".",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv12_expired_token",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "token_lifetime": "2 seconds (create_access_token with a short expiry, standing in for JWT_EXPIRE_MINUTES)",
+        "wait": "3 seconds",
+        "routes": "[\"GET /auth/me\", \"GET /api/reports\"]"
+      },
+      "checks": [
+        {
+          "description": "Before expiry: accepted",
+          "expected": "200",
+          "actual": "200",
+          "passed": true
+        },
+        {
+          "description": "After expiry: GET /auth/me",
+          "expected": "401 Not authenticated",
+          "actual": "401 Not authenticated",
+          "passed": true
+        },
+        {
+          "description": "After expiry: GET /api/reports",
+          "expected": "401 Not authenticated",
+          "actual": "401 Not authenticated",
+          "passed": true
+        },
+        {
+          "description": "Same body as a garbage token (reason not revealed)",
+          "expected": "{\"detail\":\"Not authenticated\"}",
+          "actual": "{\"detail\":\"Not authenticated\"}",
+          "passed": true
+        },
+        {
+          "description": "No 'expired' wording",
+          "expected": "no \"expired\"",
+          "actual": "no \"expired\"",
+          "passed": true
+        }
+      ],
+      "outputs": {},
+      "notes": [],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-13",
+      "title": "Tampered token handling",
+      "control": "HS256 signature verification before any business logic",
+      "acceptance": "401 returned; the request is rejected before any business logic runs.",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv13_tampered_token",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "original_signature": "XiysHWOSJai7Tr7A...",
+        "tampered_signature": "XiysHWOSJaA7Tr7A...",
+        "changed": "one character at position 10"
+      },
+      "checks": [
+        {
+          "description": "GET /auth/me",
+          "expected": "401 Not authenticated",
+          "actual": "401 Not authenticated",
+          "passed": true
+        },
+        {
+          "description": "POST /agents/safety/validate",
+          "expected": "401 Not authenticated",
+          "actual": "401 Not authenticated",
+          "passed": true
+        },
+        {
+          "description": "POST /api/reports",
+          "expected": "401 Not authenticated",
+          "actual": "401 Not authenticated",
+          "passed": true
+        },
+        {
+          "description": "No audit entries (no business logic ran)",
+          "expected": "0",
+          "actual": "0",
+          "passed": true
+        },
+        {
+          "description": "Control: original token still works",
+          "expected": "200",
+          "actual": "200",
+          "passed": true
+        }
+      ],
+      "outputs": {},
+      "notes": [],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-14",
+      "title": "Database network access control",
+      "control": "MongoDB Atlas IP access list; secret handling in the repository",
+      "acceptance": "Document the current rule (0.0.0.0/0, allow from anywhere) and the compensating control in place (dedicated readWrite-only database user, not the project's admin account).",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv14_database_network_access",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "repository_checks": "[\"backend/.env ignored by git\", \"no MongoDB connection string in any commit\", \"database.py reads MONGODB_URI from the environment\"]",
+        "atlas_console": "not accessible to the automated test"
+      },
+      "checks": [
+        {
+          "description": "backend/.env is git-ignored",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "description": "backend/.env not tracked",
+          "expected": "",
+          "actual": "",
+          "passed": true
+        },
+        {
+          "description": "No credentialed connection string in any of 76 commits",
+          "expected": "",
+          "actual": "",
+          "passed": true
+        },
+        {
+          "description": "Connection string read from the environment",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        }
+      ],
+      "outputs": {},
+      "notes": [
+        "KF-01 (0.0.0.0/0 on the Atlas IP access list, compensated by the readWrite-only lablens_app user) was identified in the Atlas console during development. The Atlas Network Access page and database-user roles cannot be read from the code or an automated test, so that part needs the console screenshot.",
+        "INCONCLUSIVE: The Atlas IP access list and database-user roles are only visible in the Atlas console; the repository-side controls above were verified."
+      ],
+      "images": [],
+      "finding": null,
+      "weakness": false,
+      "outcome": "skipped"
+    },
+    {
+      "val_id": "PRIV-15",
+      "title": "Brute-force protection on login",
+      "control": "Rate limiting / lockout on POST /auth/login",
+      "acceptance": "Document whether any rate limiting, lockout, or backoff is applied (expected: none currently implemented).",
+      "nodeid": "tests/privacy_validation/test_privacy.py::test_priv15_brute_force_protection",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
+      "inputs": {
+        "account": "victim@example.com",
+        "wrong_password_attempts": "15",
+        "then": "correct password immediately"
+      },
+      "checks": [
+        {
+          "description": "15 wrong guesses: statuses",
+          "expected": "[401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 401]",
+          "actual": "[401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 401, 401]",
+          "passed": true
+        },
+        {
+          "description": "Any 429 / Retry-After returned",
+          "expected": "none (no rate limit)",
+          "actual": "none (no rate limit)",
+          "passed": true
+        },
+        {
+          "description": "Backoff: later attempts slower than early ones",
+          "expected": "no backoff",
+          "actual": "no backoff",
+          "passed": true
+        },
+        {
+          "description": "Correct password right after the burst",
+          "expected": "200 (no lockout)",
+          "actual": "200 (no lockout)",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "per-attempt latency (ms)": "[196, 194, 195, 196, 194, 194, 196, 195, 195, 193, 195, 194, 194, 195, 195]",
+        "throughput": "15 attempts in 2.92s = 5.1 guesses/s from one client"
+      },
+      "notes": [
+        "Confirms KF-02 empirically. bcrypt's cost (~0.2-0.3 s per attempt) is the only brake, and failed logins are not written to the audit log (PRIV-08), so a guessing burst leaves no trace."
+      ],
+      "images": [],
+      "finding": "KF-02",
+      "weakness": true,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-04",
+      "title": "JWT storage location and XSS exposure",
+      "control": "Token handling in frontend/src/lib/api.ts",
+      "acceptance": "Document the actual storage mechanism (localStorage/sessionStorage/cookie) and assess its exposure to a hypothetical XSS vector.",
+      "nodeid": "tests/privacy_validation/test_privacy_browser.py::test_priv04_jwt_storage_location",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy_browser.py",
+      "inputs": {
+        "frontend": "real React frontend at http://localhost:5173 (Vite dev server), Microsoft Edge",
+        "steps": "[\"register Kasun Edirisinghe / kasun.browser@example.com\", \"automatic login\", \"inspect storage\", \"inject a script into the page\"]"
+      },
+      "checks": [
+        {
+          "description": "Token stored in localStorage under 'lablens_token'",
+          "expected": "true",
+          "actual": "true",
+          "passed": true
+        },
+        {
+          "description": "Stored value is the backend-issued JWT for this user",
+          "expected": "4fb2c2a9-4ef9-42e3-9428-42d0330b4346",
+          "actual": "4fb2c2a9-4ef9-42e3-9428-42d0330b4346",
+          "passed": true
+        },
+        {
+          "description": "sessionStorage",
+          "expected": "{}",
+          "actual": "{}",
+          "passed": true
+        },
+        {
+          "description": "Token in any cookie (HttpOnly protection)",
+          "expected": "none",
+          "actual": "none",
+          "passed": true
+        },
+        {
+          "description": "A script injected into the page can read the token",
+          "expected": "readable (XSS exposure)",
+          "actual": "readable (XSS exposure)",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "JWT claims (decoded, not verified)": "{\"sub\": \"4fb2c2a9-4ef9-42e3-9428-42d0330b4346\", \"iat\": 1790955787, \"exp\": 1790959387}",
+        "storage after login": "{\"local\": {\"lablens_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...\"}, \"session\": {}, \"cookie\": \"\"}"
+      },
+      "notes": [
+        "localStorage is readable by any JavaScript running on the origin, so a single XSS flaw (or a compromised npm dependency) would let an attacker copy the bearer token and use it from anywhere until it expires (60 minutes). An HttpOnly, Secure, SameSite cookie would keep it out of reach of page scripts."
+      ],
+      "images": [
+        {
+          "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\evidence\\browser\\priv04_token_in_localstorage.png",
+          "caption": "Real frontend after login, with storage overlay"
+        }
+      ],
+      "finding": "PF-01",
+      "weakness": true,
+      "outcome": "passed"
+    },
+    {
+      "val_id": "PRIV-05",
+      "title": "Token validity after logout",
+      "control": "Client-side logout (setToken(null)); stateless JWT verification",
+      "acceptance": "Document whether the token is still accepted (expected: yes, since JWTs are stateless) and treat this as a documented limitation, not a surprise.",
+      "nodeid": "tests/privacy_validation/test_privacy_browser.py::test_priv05_token_valid_after_logout",
+      "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy_browser.py",
+      "inputs": {
+        "steps": "[\"log in through the UI\", \"capture the token from localStorage\", \"click 'Log out'\", \"replay the captured token: GET /auth/me and GET /api/reports\"]"
+      },
+      "checks": [
+        {
+          "description": "Token removed from the browser on logout",
+          "expected": "null",
+          "actual": "null",
+          "passed": true
+        },
+        {
+          "description": "UI left the authenticated area",
+          "expected": "a public page (outside /app)",
+          "actual": "http://localhost:5173/login",
+          "passed": true
+        },
+        {
+          "description": "Replayed token: GET /auth/me",
+          "expected": "200 (still accepted)",
+          "actual": "200 (still accepted)",
+          "passed": true
+        },
+        {
+          "description": "Replayed token: identifies the logged-out user",
+          "expected": "kasun.browser@example.com",
+          "actual": "kasun.browser@example.com",
+          "passed": true
+        },
+        {
+          "description": "Replayed token: GET /api/reports",
+          "expected": "200",
+          "actual": "200",
+          "passed": true
+        },
+        {
+          "description": "Remaining lifetime of the replayed token",
+          "expected": "about 60 minutes",
+          "actual": "60 minutes",
+          "passed": true
+        }
+      ],
+      "outputs": {
+        "replay responses": "{\"/auth/me\": {\"status\": 200, \"body\": {\"user_id\": \"4fb2c2a9-4ef9-42e3-9428-42d0330b4346\", \"name\": \"Kasun Edirisinghe\", \"email\": \"kasun.browser@example.com\"}}, \"/api/reports\": {\"status\": 200, \"body\": []}}"
+      },
+      "notes": [
+        "Logout only deletes the browser's copy. The backend has no logout endpoint, token denylist or token version, so a copied token keeps working until 'exp'."
+      ],
+      "images": [
+        {
+          "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\evidence\\browser\\priv05_token_replayed_after_logout.png",
+          "caption": "After logout: storage cleared, captured token still accepted by the API"
+        }
+      ],
+      "finding": "PF-02",
+      "weakness": true,
+      "outcome": "passed"
+    }
+  ]
+}
