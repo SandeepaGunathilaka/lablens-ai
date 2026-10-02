@@ -1,0 +1,23 @@
+{
+  "id": "platelets",
+  "test_name": "Platelets",
+  "aliases": [
+    "Platelet",
+    "Platelet Count",
+    "PLT",
+    "Thrombocyte Count"
+  ],
+  "report_type": "CBC",
+  "title": "Platelet Count",
+  "definition": "A platelet count is a blood test that counts platelets, also known as thrombocytes.",
+
+  "what_it_measures": "The test measures how many platelets are present in a blood sample.",
+
+  "general_information": "Platelet counts may be included in a complete blood count (CBC). Platelets help form clots to stop bleeding.",
+  "source": {
+    "publisher": "MedlinePlus",
+    "title": "Platelet Tests",
+    "url": "https://medlineplus.gov/lab-tests/platelet-tests/",
+    "accessed_date": "2026-09-28"
+  }
+}

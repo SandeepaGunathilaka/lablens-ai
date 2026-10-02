@@ -1,0 +1,42 @@
+<!doctype html><html><head><meta charset='utf-8'><title>Summary</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 28px; background: #f4f6fa; color: #1d2433; width: 1180px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px 28px; }
+h1 { margin: 0 0 4px; font-size: 24px; } h2 { font-size: 16px; margin: 22px 0 8px; color: #33415c; }
+.meta { color: #5c677d; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; }
+.badge.pass { background: #1b9e5a; } .badge.fail { background: #d64545; } .badge.weak { background: #c77700; } .badge.inc { background: #6b7280; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { background: #24324d; color: #fff; text-align: left; padding: 8px 10px; }
+td { border-bottom: 1px solid #e3e7ef; padding: 7px 10px; vertical-align: top; word-break: break-word; }
+td:first-child { white-space: nowrap; }
+td.res { white-space: nowrap; }
+tr.ok td.res { color: #1b9e5a; font-weight: 700; } tr.bad td.res { color: #d64545; font-weight: 700; }
+tr.weak td.res { color: #c77700; font-weight: 700; } tr.inc td.res { color: #6b7280; font-weight: 700; }
+tr.bad { background: #fff1f1; } tr.weak { background: #fff8eb; }
+td.exp { background: #eef5ff; } td.act { background: #f6fff4; } tr.bad td.act { background: #ffe3e3; }
+pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.kv td:first-child { width: 230px; font-weight: 600; color: #33415c; }
+.note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+.acc { background: #f0f3f9; border-left: 4px solid #24324d; padding: 8px 12px; font-size: 13px; }
+figure { margin: 14px 0 0; } figure img { max-width: 100%; border: 1px solid #d5dbe6; border-radius: 8px; }
+figcaption { font-size: 12px; color: #5c677d; margin-top: 4px; }
+</style></head><body>
+<div class='card'>
+  <h1>LabLens AI - Information Retrieval and Security assessment results (Student 4)</h1>
+  <div class='meta'>Test cases IR-01 to IR-15, executed against the real Medical Retrieval Agent (MiniLM + Chroma) and FastAPI auth/API layer</div>
+  <h2>Results summary</h2>
+  <table class='kv'>
+    <tr><td>Total tests planned</td><td>15</td></tr>
+    <tr><td>Tests executed</td><td>15 (17 test functions incl. sub-cases)</td></tr>
+    <tr><td>Passed</td><td>14</td></tr>
+    <tr><td>Passed with documented weakness (PASS*)</td><td>0</td></tr>
+    <tr><td>Failed (confirmed findings)</td><td>0</td></tr>
+    <tr><td>Inconclusive</td><td>1</td></tr>
+    <tr><td>Open findings / weaknesses</td><td>None</td></tr>
+    <tr><td>Findings fixed and retested</td><td>IR-F01, IR-F02, IR-F03, IR-F04, IR-F05</td></tr>
+  </table>
+  <h2>Test cases</h2>
+  <table><tr><th>ID</th><th>Test</th><th>Expected result</th><th>Checks met</th><th>Status</th><th>Finding</th></tr><tr class='ok'><td>IR-01</td><td>Exact-term retrieval accuracy</td><td>Top results should contain directly relevant LDL knowledge-base content with correct source metadata.</td><td>11/11</td><td class='res'>PASS</td><td></td></tr><tr class='ok'><td>IR-02</td><td>Semantic retrieval accuracy</td><td>Semantically relevant LDL evidence should still be retrieved; ranking should remain reasonable.</td><td>6/6</td><td class='res'>PASS</td><td>IR-F01 (fixed)</td></tr><tr class='ok'><td>IR-03</td><td>Top-k ranking and duplicate control</td><td>Most relevant evidence should rank first; duplicated chunks should not dominate the context window.</td><td>8/8</td><td class='res'>PASS</td><td></td></tr><tr class='ok'><td>IR-04</td><td>Unsupported/out-of-scope query</td><td>System should return no/insufficient reliable evidence or a controlled limitation; it should not invent a source.</td><td>12/12</td><td class='res'>PASS</td><td></td></tr><tr class='ok'><td>IR-05</td><td>Query-stuffing manipulation</td><td>Retriever should remain focused on the actual information need; irrelevant padding should not dominate top results.</td><td>4/4</td><td class='res'>PASS</td><td></td></tr><tr class='ok'><td>IR-06</td><td>Instruction injection through user query</td><td>Instruction-like user text should be treated as retrieval content, not privileged control; returned evidence should remain relevance-based.</td><td>5/5</td><td class='res'>PASS</td><td></td></tr><tr class='ok'><td>IR-07</td><td>Poisoned/instruction-like knowledge-base content</td><td>Retrieved content must not gain system authority merely because it was indexed; downstream components should treat it as untrusted evidence.</td><td>11/11</td><td class='res'>PASS</td><td></td></tr><tr class='ok'><td>IR-08a</td><td>Hallucination from irrelevant retrieval</td><td>Explanation should acknowledge uncertainty/conflict and avoid unsupported clinical claims derived from bad retrieval.</td><td>4/4</td><td class='res'>PASS</td><td>IR-F02 (fixed)</td></tr><tr class='ok'><td>IR-08b</td><td>Hallucination from conflicting retrieval</td><td>Explanation should acknowledge uncertainty/conflict and avoid unsupported clinical claims derived from bad retrieval.</td><td>6/6</td><td class='res'>PASS</td><td></td></tr><tr class='ok'><td>IR-09</td><td>Source provenance integrity</td><td>Displayed/returned source metadata should identify the actual supporting record and not misattribute content.</td><td>16/16</td><td class='res'>PASS</td><td></td></tr><tr class='ok'><td>IR-10</td><td>Source reliability / trusted corpus boundary</td><td>Production retrieval should be limited to the curated/trusted corpus or clearly distinguish untrusted material.</td><td>3/3</td><td class='res'>PASS</td><td>IR-F03 (fixed)</td></tr><tr class='ok'><td>IR-11</td><td>Unauthenticated retrieval access</td><td>Protected operation should return 401/403 (as designed) and no private report/retrieval data.</td><td>11/11</td><td class='res'>PASS</td><td>IR-F04 (fixed)</td></tr><tr class='ok'><td>IR-12</td><td>Invalid/expired JWT handling</td><td>Request should be rejected consistently; no stack trace, token details or protected data should be exposed.</td><td>14/14</td><td class='res'>PASS</td><td></td></tr><tr class='ok'><td>IR-13</td><td>Authorization / cross-user resource access</td><td>Server-side authorization should prevent cross-user access regardless of frontend controls.</td><td>12/12</td><td class='res'>PASS</td><td></td></tr><tr class='ok'><td>IR-14</td><td>API validation, error leakage and resource abuse</td><td>API should return controlled 4xx responses, enforce practical limits, avoid internal paths/secrets/tracebacks, and remain responsive.</td><td>16/16</td><td class='res'>PASS</td><td>IR-F05 (fixed)</td></tr><tr class='ok'><td>IR-15a</td><td>Communication protocol and CORS security: CORS</td><td>Credentialed CORS should be limited to approved origins.</td><td>4/4</td><td class='res'>PASS</td><td></td></tr><tr class='inc'><td>IR-15b</td><td>Communication protocol and CORS security: HTTPS/TLS</td><td>Production should use HTTPS/TLS; sensitive API traffic should not be accepted over insecure transport.</td><td>2/2</td><td class='res'>INCONCLUSIVE</td><td></td></tr></table>
+  <div class='meta' style='margin-top:8px'></div>
+  <h2>Test environment</h2><table class='kv'><tr><td>git_branch</td><td>Throw-away-test-branch</td></tr><tr><td>git_commit</td><td>16647a0c372a7cd8d75928bcc26e394413406bad</td></tr><tr><td>working_tree</td><td>uncommitted changes present</td></tr><tr><td>os</td><td>Windows-11-10.0.26200-SP0</td></tr><tr><td>python</td><td>3.13.9</td></tr><tr><td>pytest</td><td>8.4.2</td></tr><tr><td>executed_at</td><td>2026-10-02T22:06:11+05:30</td></tr><tr><td>component</td><td>Medical Retrieval Agent (keyword + semantic hybrid), auth/API layer (FastAPI)</td></tr><tr><td>embedding_model</td><td>sentence-transformers/all-MiniLM-L6-v2 (real model, CPU)</td></tr><tr><td>vector_store</td><td>ChromaDB 1.5.9 (index rebuilt from the curated KB per run)</td></tr><tr><td>knowledge_base_sha256</td><td>3b1d9dc56f8cc665</td></tr><tr><td>explanation_provider</td><td>template (deterministic; scripted model where stated)</td></tr><tr><td>database</td><td>mongomock 4.3.0 (in-memory MongoDB)</td></tr></table>
+</div></body></html>

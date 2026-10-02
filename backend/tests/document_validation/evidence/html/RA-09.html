@@ -1,0 +1,34 @@
+<!doctype html><html><head><meta charset='utf-8'><title>RA-09</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 28px; background: #f4f6fa; color: #1d2433; width: 1180px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px 28px; }
+h1 { margin: 0 0 4px; font-size: 24px; } h2 { font-size: 16px; margin: 22px 0 8px; color: #33415c; }
+.meta { color: #5c677d; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; }
+.badge.pass { background: #1b9e5a; } .badge.fail { background: #d64545; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { background: #24324d; color: #fff; text-align: left; padding: 8px 10px; }
+td { border-bottom: 1px solid #e3e7ef; padding: 7px 10px; vertical-align: top; word-break: break-word; }
+td:first-child { white-space: nowrap; }
+tr.ok td.res { color: #1b9e5a; font-weight: 700; } tr.bad td.res { color: #d64545; font-weight: 700; }
+tr.bad { background: #fff1f1; }
+td.exp { background: #eef5ff; } td.act { background: #f6fff4; } tr.bad td.act { background: #ffe3e3; }
+pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.kv td:first-child { width: 230px; font-weight: 600; color: #33415c; }
+.note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+.acc { background: #f0f3f9; border-left: 4px solid #24324d; padding: 8px 12px; font-size: 13px; }
+</style></head><body>
+<div class='card'>
+  <div style='display:flex;justify-content:space-between;align-items:center'>
+    <div><h1>RA-09 - Upload integrity / spoofed files</h1>
+    <div class='meta'>Control under test: Extension, signature and size checks before any parsing; fail closed</div>
+    <div class='meta'>Test: tests/document_validation/test_document_validation.py::test_ra09_upload_integrity</div></div>
+    <div><span class='badge pass'>PASS</span>
+    <div class='meta' style='text-align:right;margin-top:6px'>9/9 checks met</div></div>
+  </div>
+  <h2>Expected result (assessment section 3)</h2><div class='acc'>Spoofed, corrupt, empty or oversized files are rejected with a clear message and never parsed; a missing OCR engine returns 503.</div>
+  <h2>Test input</h2><table class='kv'><tr><td>cases</td><td><pre>[&quot;text file&quot;, &quot;fake PDF&quot;, &quot;corrupt PDF&quot;, &quot;PNG renamed .jpg&quot;, &quot;empty file&quot;, &quot;11 MB file&quot;]</pre></td></tr></table>
+  <h2>Expected result vs actual result</h2>
+  <table><tr><th>#</th><th>Check</th><th>Expected result</th><th>Actual result</th><th>Result</th></tr><tr class='ok'><td>1</td><td>text file: rejected</td><td class='exp'>Only PDF, PNG, JPG, and JPEG lab reports are supported.</td><td class='act'>Only PDF, PNG, JPG, and JPEG lab reports are supported.</td><td class='res'>PASS</td></tr><tr class='ok'><td>2</td><td>fake PDF: rejected</td><td class='exp'>The uploaded .pdf file does not contain valid PDF data.</td><td class='act'>The uploaded .pdf file does not contain valid PDF data.</td><td class='res'>PASS</td></tr><tr class='ok'><td>3</td><td>corrupt PDF: rejected</td><td class='exp'>The PDF could not be read.</td><td class='act'>The PDF could not be read.</td><td class='res'>PASS</td></tr><tr class='ok'><td>4</td><td>PNG renamed .jpg: rejected</td><td class='exp'>The file extension does not match the uploaded image data.</td><td class='act'>The file extension does not match the uploaded image data.</td><td class='res'>PASS</td></tr><tr class='ok'><td>5</td><td>empty file: rejected</td><td class='exp'>The uploaded file is empty.</td><td class='act'>The uploaded file is empty.</td><td class='res'>PASS</td></tr><tr class='ok'><td>6</td><td>11 MB file: rejected</td><td class='exp'>The uploaded file exceeds the 10 MB size limit.</td><td class='act'>The uploaded file exceeds the 10 MB size limit.</td><td class='res'>PASS</td></tr><tr class='ok'><td>7</td><td>API status for spoofed file</td><td class='exp'>422</td><td class='act'>422</td><td class='res'>PASS</td></tr><tr class='ok'><td>8</td><td>OCR engine unavailable: API status</td><td class='exp'>503</td><td class='act'>503</td><td class='res'>PASS</td></tr><tr class='ok'><td>9</td><td>OCR engine unavailable: message</td><td class='exp'>Tesseract OCR is not installed or available on this server.</td><td class='act'>Tesseract OCR is not installed or available on this server.</td><td class='res'>PASS</td></tr></table>
+  <h2>Actual output: API response (OCR unavailable)</h2><pre>{&quot;detail&quot;: &quot;Tesseract OCR is not installed or available on this server.&quot;}</pre>
+  <div class='meta' style='margin-top:18px'>Commit 16647a0c37 on Throw-away-test-branch | Python 3.13.9 | pytest 8.4.2 | Tesseract 5.4.0.20240606 | en_core_web_sm 3.8.0 (spaCy 3.8.16) | executed 2026-10-02T22:08:03+05:30</div>
+</div></body></html>

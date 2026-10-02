@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset='utf-8'><title>VAL-02</title><style>
+body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 28px; background: #f4f6fa; color: #1d2433; width: 1180px; }
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px 28px; }
+h1 { margin: 0 0 4px; font-size: 24px; } h2 { font-size: 16px; margin: 22px 0 8px; color: #33415c; }
+.meta { color: #5c677d; font-size: 13px; margin-bottom: 4px; }
+.badge { display: inline-block; padding: 5px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; }
+.badge.pass { background: #1b9e5a; } .badge.fail { background: #d64545; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { background: #24324d; color: #fff; text-align: left; padding: 8px 10px; }
+td { border-bottom: 1px solid #e3e7ef; padding: 7px 10px; vertical-align: top; word-break: break-word; }
+td:first-child { white-space: nowrap; }
+tr.ok td.res { color: #1b9e5a; font-weight: 700; } tr.bad td.res { color: #d64545; font-weight: 700; }
+tr.bad { background: #fff1f1; }
+td.exp { background: #eef5ff; } td.act { background: #f6fff4; } tr.bad td.act { background: #ffe3e3; }
+pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.kv td:first-child { width: 230px; font-weight: 600; color: #33415c; }
+.note { background: #fff8e1; border-left: 4px solid #f0b400; padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+.acc { background: #f0f3f9; border-left: 4px solid #24324d; padding: 8px 12px; font-size: 13px; }
+</style></head><body>
+<div class='card'>
+  <div style='display:flex;justify-content:space-between;align-items:center'>
+    <div><h1>VAL-02 - No evidence available</h1>
+    <div class='meta'>Control under test: Explicit limited-answer path when retrieval finds nothing</div>
+    <div class='meta'>Test: tests/explanation_validation/test_explanation_validation.py::test_val02_no_evidence_available</div></div>
+    <div><span class='badge pass'>PASS</span>
+    <div class='meta' style='text-align:right;margin-top:6px'>9/9 checks met</div></div>
+  </div>
+  <h2>Acceptance criteria (Report 3)</h2><div class='acc'>System says evidence is unavailable or limits the answer; no invented range/source.</div>
+  <h2>Test input</h2><table class='kv'><tr><td>extracted_result</td><td><pre>{&quot;test&quot;: &quot;Vitamin D&quot;, &quot;value&quot;: 25.0, &quot;unit&quot;: &quot;ng/mL&quot;, &quot;reference_range&quot;: &quot;20-50&quot;}</pre></td></tr><tr><td>knowledge_base</td><td><pre>has no Vitamin D entry</pre></td></tr><tr><td>second_case</td><td><pre>Hemoglobin with a model draft citing &#x27;Harrison&#x27;s Principles of Internal Medicine&#x27; (not retrieved)</pre></td></tr></table>
+  <h2>Expected result vs actual result</h2>
+  <table><tr><th>#</th><th>Check</th><th>Expected result</th><th>Actual result</th><th>Result</th></tr><tr class='ok'><td>1</td><td>Model called without evidence</td><td class='exp'>0</td><td class='act'>0</td><td class='res'>PASS</td></tr><tr class='ok'><td>2</td><td>Generation mode</td><td class='exp'>insufficient</td><td class='act'>insufficient</td><td class='res'>PASS</td></tr><tr class='ok'><td>3</td><td>insufficient_information flag</td><td class='exp'>true</td><td class='act'>true</td><td class='res'>PASS</td></tr><tr class='ok'><td>4</td><td>Cited sources</td><td class='exp'>[]</td><td class='act'>[]</td><td class='res'>PASS</td></tr><tr class='ok'><td>5</td><td>User told evidence is unavailable</td><td class='exp'>contains &quot;LabLens could not find sufficient information about this test in its approved knowledge base.&quot;</td><td class='act'>contains &quot;LabLens could not find sufficient information about this test in its approved knowledge base.&quot;</td><td class='res'>PASS</td></tr><tr class='ok'><td>6</td><td>Numbers in response come only from the report</td><td class='exp'>subset of [20.0, 25.0, 50.0]</td><td class='act'>[20.0, 25.0, 50.0]</td><td class='res'>PASS</td></tr><tr class='ok'><td>7</td><td>Draft citing a non-retrieved source: generation mode</td><td class='exp'>safe_fallback</td><td class='act'>safe_fallback</td><td class='res'>PASS</td></tr><tr class='ok'><td>8</td><td>Draft citing a non-retrieved source: sources shown</td><td class='exp'>[]</td><td class='act'>[]</td><td class='res'>PASS</td></tr><tr class='ok'><td>9</td><td>Invented source never shown</td><td class='exp'>no &quot;Harrison&quot;</td><td class='act'>no &quot;Harrison&quot;</td><td class='res'>PASS</td></tr></table>
+  <h2>Actual output: final_response (Vitamin D)</h2><pre>Vitamin D: your result is 25 ng/mL; the range on your report is 20-50, which is normal.
+LabLens could not find sufficient information about this test in its approved knowledge base.
+There is not enough reliable information in the retrieved sources to describe what Vitamin D measures.
+The recorded result is 25 ng/mL. The reference range supplied is 20-50. The supplied status is normal. There is not enough reliable information to explain this result further. The recorded result was not changed.
+There is not enough reliable information to describe a possible meaning. No personal condition is assigned.
+Discuss this result with a qualified healthcare professional. No medication or treatment advice is provided.
+
+This summary is for general education only and is not medical advice. Please talk to your doctor about your results.</pre><h2>Actual output: safety_notes (invented source case)</h2><pre>[&quot;Hemoglobin: draft replaced with a safe response (sources_used includes a title that was not retrieved: Harrison&#x27;s Principles of Internal Medicine)&quot;]</pre>
+  <div class='meta' style='margin-top:18px'>Commit 16647a0c37 on Throw-away-test-branch | Python 3.13.9 | pytest 8.4.2 | prompt sha256 4cb8b9b05128505f | KB sha256 3b1d9dc56f8cc665 | executed 2026-10-02T22:08:21+05:30</div>
+</div></body></html>
