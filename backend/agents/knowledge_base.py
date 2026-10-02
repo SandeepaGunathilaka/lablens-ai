@@ -1,17 +1,21 @@
 """Offline structural validation of curated knowledge documents.
 
 Run from backend with ``python -m agents.knowledge_base``. Validation checks
-structure and required content, not medical accuracy or source availability.
+structure, required content and that every source is an HTTPS page from an approved
+publisher domain. It does not check medical accuracy or source availability.
 """
 
 import json
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, Field, StringConstraints, ValidationError
 
 
 KNOWLEDGE_BASE_DIR = Path(__file__).resolve().parents[1] / "data" / "knowledge_base"
+# Publishers reviewed for the curated corpus. Adding one is a content-governance decision.
+APPROVED_SOURCE_DOMAINS = ("medlineplus.gov", "cdc.gov", "nih.gov")
 RequiredText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
@@ -40,6 +44,18 @@ class KnowledgeBaseValidationError(ValueError):
     def __init__(self, errors: list[str]):
         self.errors = errors
         super().__init__("Knowledge-base validation failed:\n" + "\n".join(errors))
+
+
+def source_problems(source: KnowledgeSource) -> list[str]:
+    """Reasons a source is not from the trusted corpus; empty when it is."""
+    url = urlsplit(source.url.strip())
+    host = (url.hostname or "").casefold()
+    problems = []
+    if url.scheme != "https":
+        problems.append("must use https")
+    if not any(host == domain or host.endswith("." + domain) for domain in APPROVED_SOURCE_DOMAINS):
+        problems.append(f"{host or source.url!r} is not an approved publisher domain")
+    return problems
 
 
 def validate_knowledge_base(directory: Path | str = KNOWLEDGE_BASE_DIR) -> list[KnowledgeDocument]:
@@ -74,11 +90,14 @@ def validate_knowledge_base(directory: Path | str = KNOWLEDGE_BASE_DIR) -> list[
             else:
                 seen_ids[document_id] = path
         try:
-            documents.append(KnowledgeDocument.model_validate(payload))
+            document = KnowledgeDocument.model_validate(payload)
         except ValidationError as exc:
             for error in exc.errors():
                 field = ".".join(str(part) for part in error["loc"]) or "document"
                 errors.append(f"{path}: {field}: {error['msg']}")
+            continue
+        errors.extend(f"{path}: source.url: {problem}" for problem in source_problems(document.source))
+        documents.append(document)
 
     if errors:
         raise KnowledgeBaseValidationError(errors)

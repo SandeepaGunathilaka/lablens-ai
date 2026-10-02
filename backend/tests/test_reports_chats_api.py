@@ -171,12 +171,34 @@ def test_rejected_answer_returns_fallback_without_generated_text(client, auth_he
     headers = auth_headers("user-1")
     chat = _new_chat(client, headers, report["id"])
 
-    response = client.post(f"{CHATS_URL}/{chat['id']}/messages", json={"question": "Do I have anemia?"}, headers=headers)
+    response = client.post(f"{CHATS_URL}/{chat['id']}/messages", json={"question": "What does my hemoglobin mean?"}, headers=headers)
 
     answer = response.json()["assistant_message"]["answer"]
     assert answer == {"task_id": answer["task_id"], "status": "fallback", "findings": [], "message": FALLBACK_MESSAGE}
     safety = list(audit_logs.find({"task_id": answer["task_id"], "agent": "safety_agent"}))
     assert [e["details"]["attempt"] for e in safety] == [1, 2, 3]
+
+
+@pytest.mark.parametrize("question, status, intent, text", [
+    ("Do I have anemia?", "redirect", "diagnosis", "qualified healthcare professional"),
+    ("k", "reply", "small_talk", "Ask me about any result"),
+    ("What is the capital of France?", "reply", "off_topic", "only answer questions about the lab results"),
+])
+def test_questions_needing_no_explanation_get_a_direct_reply(client, auth_headers, report, audit_logs, monkeypatch,
+                                                             question, status, intent, text):
+    monkeypatch.setattr("chat_service.default_explanation", lambda request: pytest.fail("explanation must not run"))
+    headers = auth_headers("user-1")
+    chat = _new_chat(client, headers, report["id"])
+
+    body = client.post(f"{CHATS_URL}/{chat['id']}/messages", json={"question": question}, headers=headers).json()
+
+    answer = body["assistant_message"]["answer"]
+    assert answer["status"] == status
+    assert text in answer["message"]
+    assert answer["findings"] == []
+    assert body["user_message"]["test_names"] == []
+    [entry] = audit_logs.find({"task_id": answer["task_id"]})
+    assert (entry["status"], entry["details"]) == (status, {"intent": intent})
 
 
 def test_chat_belongs_to_its_owner(client, auth_headers, report):

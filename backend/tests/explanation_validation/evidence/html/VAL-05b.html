@@ -30,5 +30,5 @@ pre { background: #0f1724; color: #d9e2f2; padding: 12px 14px; border-radius: 8p
   <h2>Expected result vs actual result</h2>
   <table><tr><th>#</th><th>Check</th><th>Expected result</th><th>Actual result</th><th>Result</th></tr><tr class='ok'><td>1</td><td>value is NaN: HTTP status</td><td class='exp'>422</td><td class='act'>422</td><td class='res'>PASS</td></tr><tr class='ok'><td>2</td><td>value is Infinity: HTTP status</td><td class='exp'>422</td><td class='act'>422</td><td class='res'>PASS</td></tr></table>
   <div class='note'>First run: HTTP 500. The finite_value validator rejected the value, but FastAPI then failed to serialise &#x27;input&#x27;: nan in the 422 body. Fixed by a JSON-safe RequestValidationError handler in main.py.</div>
-  <div class='meta' style='margin-top:18px'>Commit f90155b55f on frontend | Python 3.13.9 | pytest 8.4.2 | prompt sha256 4cb8b9b05128505f | KB sha256 3b1d9dc56f8cc665 | executed 2026-10-02T17:40:09+05:30</div>
+  <div class='meta' style='margin-top:18px'>Commit 16647a0c37 on Throw-away-test-branch | Python 3.13.9 | pytest 8.4.2 | prompt sha256 4cb8b9b05128505f | KB sha256 3b1d9dc56f8cc665 | executed 2026-10-02T22:08:21+05:30</div>
 </div></body></html>

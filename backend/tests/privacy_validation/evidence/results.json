@@ -1,12 +1,12 @@
 {
   "environment": {
-    "git_branch": "frontend",
-    "git_commit": "f90155b55f695c1e4040772ad9677a949ac5e56d",
+    "git_branch": "Throw-away-test-branch",
+    "git_commit": "16647a0c372a7cd8d75928bcc26e394413406bad",
     "working_tree": "uncommitted changes present",
     "os": "Windows-11-10.0.26200-SP0",
     "python": "3.13.9",
     "pytest": "8.4.2",
-    "executed_at": "2026-10-02T21:13:46+05:30",
+    "executed_at": "2026-10-02T22:07:43+05:30",
     "component": "Authentication, authorization, audit logging, saved reports/chats (FastAPI backend) and the React frontend",
     "backend_version": "LabLens AI API 0.1.0 (FastAPI 0.142.2)",
     "auth": "JWT HS256, expiry 60 min (python-jose 3.5.0); bcrypt via passlib 1.7.4",
@@ -95,7 +95,7 @@
         }
       ],
       "outputs": {
-        "register response": "{\"user_id\": \"4b1b6b29-073c-488d-aa03-0b1b03ebc4e2\", \"name\": \"Kasun Edirisinghe\", \"email\": \"kasun@example.com\"}",
+        "register response": "{\"user_id\": \"ac6c887f-9bf8-4176-8fea-5c1fd897f43c\", \"name\": \"Kasun Edirisinghe\", \"email\": \"kasun@example.com\"}",
         "login response (token shortened)": "{\"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5...\", \"token_type\": \"bearer\", \"expires_in\": 3600}"
       },
       "notes": [],
@@ -178,13 +178,13 @@
         {
           "description": "Both cases spend a bcrypt verification",
           "expected": "both > 50 ms",
-          "actual": "known 194 ms, unknown 193 ms",
+          "actual": "known 216 ms, unknown 217 ms",
           "passed": true
         },
         {
           "description": "Mean difference below 10% of the mean",
           "expected": "< 10%",
-          "actual": "0.4% (0.9 ms)",
+          "actual": "0.1% (0.2 ms)",
           "passed": true
         },
         {
@@ -195,9 +195,9 @@
         }
       ],
       "outputs": {
-        "known email, wrong password (ms)": "[192.1, 204.0, 191.4, 192.1, 191.2]",
-        "unknown email (ms)": "[198.3, 192.5, 191.4, 191.9, 192.3]",
-        "summary": "{\"known_mean_ms\": 194.2, \"unknown_mean_ms\": 193.3, \"difference_ms\": 0.9, \"largest_stdev_ms\": 5.5}"
+        "known email, wrong password (ms)": "[216.4, 217.9, 215.7, 216.2, 215.5]",
+        "unknown email (ms)": "[214.2, 216.0, 217.0, 217.3, 218.2]",
+        "summary": "{\"known_mean_ms\": 216.3, \"unknown_mean_ms\": 216.6, \"difference_ms\": 0.2, \"largest_stdev_ms\": 1.6}"
       },
       "notes": [],
       "images": [],
@@ -213,9 +213,9 @@
       "nodeid": "tests/privacy_validation/test_privacy.py::test_priv06_cross_user_audit_access",
       "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
       "inputs": {
-        "user_A": "225e1b04-42c4-4f17-8ee8-7985fcb9d68a",
-        "user_B": "6bdfccd3-c3d1-4645-a13f-044691ca5664",
-        "task_of_B": "4775474c-4605-4ac6-bcb4-cb65248772e2",
+        "user_A": "8c5f8923-206d-4241-8e8d-599a33c417c4",
+        "user_B": "9be47abe-d654-462c-b7fd-576e851c95bd",
+        "task_of_B": "22342799-ddd6-4ab0-b676-0fe2001d7d7c",
         "unknown_task": "no-such-task"
       },
       "checks": [
@@ -262,7 +262,7 @@
       "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
       "inputs": {
         "token_of": "A",
-        "payload_user_id": "90dcf4c1-b0eb-4297-91f5-057f2dff77a0 (B)"
+        "payload_user_id": "cc013524-b86e-4071-be55-f15d4fb4662c (B)"
       },
       "checks": [
         {
@@ -405,7 +405,7 @@
       ],
       "outputs": {
         "detail keys used": "[\"attempt\", \"checks\", \"computed\", \"error\", \"extraction_method\", \"generation_modes\", \"implausible\", \"outcome\", \"result_count\", \"tests_requested\", \"tests_with_sources\", \"unknown\"]",
-        "sample entries": "[{\"log_id\": \"d1b4f17d-c5fc-4720-9096-5a2a2884f8fb\", \"task_id\": \"46dd2cf4-6c98-4fdd-9ff0-1cf8651bf972\", \"report_id\": \"095d16a2-8663-4407-a3f7-ab1490da10e9\", \"user_id\": \"c2a5cc11-b5f0-492f-a07b-61d8333cbf25\", \"agent\": \"document_agent\", \"action\": \"extract\", \"status\": \"success\", \"timestamp\": \"2026-10-02T15:42:46.446107+00:00\", \"details\": {\"extraction_method\": \"pdf_text\", \"result_count\": 2}}, {\"log_id\": \"fc482543-57bd-47b3-bf27-bbbdd731c992\", \"task_id\": \"46dd2cf4-6c98-4fdd-9ff0-1cf8651bf972\", \"report_id\": \"095d16a2-8663-4407-a3f7-ab1490da10e9\", \"user_id\": \"c2a5cc11-b5f0-492f-a07b-61d8333cbf25\", \"agent\": \"coordinator\", \"action\": \"compute_status\", \"status\": \"success\", \"timestamp\": \"2026-10-02T15:42:46.446277+00:00\", \"details\": {\"computed\": 2, \"unknown\": 0, \"implausible\": 0}}, {\"log_id\": \"aedb3139-c20d-45d6-beb7-61e96f1d30de\", \"task_id\": \"46dd2cf4-6c98-4fdd-9ff0-1cf8651bf972\", \"report_id\": \"095d16a2-8663-4407-a3f7-ab1490da10e9\", \"user_id\": \"c2a5cc11-b5f0-492f-a07b-61d8333cbf25\", \"agent\": \"retrieval_agent\", \"action\": \"retrieve\", \"status\": \"success\", \"timestamp\": \"2026-10-02T15:42:46.446520+00:00\", \"details\": {\"tests_requested\": 2, \"tests_with_sources\": 2}}, {\"log_id\": \"5510fc39-69c6-418b-91bb-359c644ab998\", \"task_id\": \"46dd2cf4-6c98-4fdd-9ff0-1cf8651bf972\", \"report_id\": \"095d16a2-8663-4407-a3f7-ab1490da10e9\", \"user_id\": \"c2a5cc11-b5f0-492f-a07b-61d8333cbf25\", \"agent\": \"explanation_agent\", \"action\": \"explain\", \"status\": \"success\", \"timestamp\": \"2026-10-02T15:42:46.447227+00:00\", \"details\": {\"attempt\": 1, \"generation_modes\": {\"template\": 2}}}]"
+        "sample entries": "[{\"log_id\": \"e2f9240e-8bb2-49e1-89a0-362edd52e2ab\", \"task_id\": \"e35b3fb8-71c6-4a5e-9bc7-8a540f40bf8b\", \"report_id\": \"0cac720e-bd48-4c06-b1f4-5d6ceff0df85\", \"user_id\": \"4b48d9df-8daf-4fa4-bb2d-1296d3485b56\", \"agent\": \"document_agent\", \"action\": \"extract\", \"status\": \"success\", \"timestamp\": \"2026-10-02T16:37:14.008221+00:00\", \"details\": {\"extraction_method\": \"pdf_text\", \"result_count\": 2}}, {\"log_id\": \"e24b09fe-b520-418d-addf-5f1473cba078\", \"task_id\": \"e35b3fb8-71c6-4a5e-9bc7-8a540f40bf8b\", \"report_id\": \"0cac720e-bd48-4c06-b1f4-5d6ceff0df85\", \"user_id\": \"4b48d9df-8daf-4fa4-bb2d-1296d3485b56\", \"agent\": \"coordinator\", \"action\": \"compute_status\", \"status\": \"success\", \"timestamp\": \"2026-10-02T16:37:14.008493+00:00\", \"details\": {\"computed\": 2, \"unknown\": 0, \"implausible\": 0}}, {\"log_id\": \"8b4681de-b7d2-4816-ad8a-604513af806b\", \"task_id\": \"e35b3fb8-71c6-4a5e-9bc7-8a540f40bf8b\", \"report_id\": \"0cac720e-bd48-4c06-b1f4-5d6ceff0df85\", \"user_id\": \"4b48d9df-8daf-4fa4-bb2d-1296d3485b56\", \"agent\": \"retrieval_agent\", \"action\": \"retrieve\", \"status\": \"success\", \"timestamp\": \"2026-10-02T16:37:14.008974+00:00\", \"details\": {\"tests_requested\": 2, \"tests_with_sources\": 2}}, {\"log_id\": \"9fe79741-3a84-4a51-b8b5-8076423da6ed\", \"task_id\": \"e35b3fb8-71c6-4a5e-9bc7-8a540f40bf8b\", \"report_id\": \"0cac720e-bd48-4c06-b1f4-5d6ceff0df85\", \"user_id\": \"4b48d9df-8daf-4fa4-bb2d-1296d3485b56\", \"agent\": \"explanation_agent\", \"action\": \"explain\", \"status\": \"success\", \"timestamp\": \"2026-10-02T16:37:14.010218+00:00\", \"details\": {\"attempt\": 1, \"generation_modes\": {\"template\": 2}}}]"
       },
       "notes": [
         "No entry is written for register or login, so the audit trail cannot show failed-login bursts (see PRIV-15)."
@@ -425,8 +425,8 @@
       "inputs": {
         "attacker": "User A (valid token)",
         "owner": "User B",
-        "report_id": "a2d9194f-f60c-491a-8733-2acf01d6ea27",
-        "chat_id": "58be7381-2b42-4de6-9ce3-325a286487ab"
+        "report_id": "cca43610-a341-479f-b4f6-1cd7ab196a27",
+        "chat_id": "35c618c7-4f3a-45ca-b905-38bc77df3cf1"
       },
       "checks": [
         {
@@ -725,8 +725,8 @@
       "nodeid": "tests/privacy_validation/test_privacy.py::test_priv13_tampered_token",
       "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\privacy_validation\\test_privacy.py",
       "inputs": {
-        "original_signature": "XiysHWOSJai7Tr7A...",
-        "tampered_signature": "XiysHWOSJaA7Tr7A...",
+        "original_signature": "wlxOhWbeeC8ul-y6...",
+        "tampered_signature": "wlxOhWbeeCAul-y6...",
         "changed": "one character at position 10"
       },
       "checks": [
@@ -793,7 +793,7 @@
           "passed": true
         },
         {
-          "description": "No credentialed connection string in any of 76 commits",
+          "description": "No credentialed connection string in any of 77 commits",
           "expected": "",
           "actual": "",
           "passed": true
@@ -854,8 +854,8 @@
         }
       ],
       "outputs": {
-        "per-attempt latency (ms)": "[196, 194, 195, 196, 194, 194, 196, 195, 195, 193, 195, 194, 194, 195, 195]",
-        "throughput": "15 attempts in 2.92s = 5.1 guesses/s from one client"
+        "per-attempt latency (ms)": "[226, 214, 214, 217, 225, 213, 215, 214, 217, 216, 216, 219, 214, 218, 219]",
+        "throughput": "15 attempts in 3.26s = 4.6 guesses/s from one client"
       },
       "notes": [
         "Confirms KF-02 empirically. bcrypt's cost (~0.2-0.3 s per attempt) is the only brake, and failed logins are not written to the audit log (PRIV-08), so a guessing burst leaves no trace."
@@ -885,8 +885,8 @@
         },
         {
           "description": "Stored value is the backend-issued JWT for this user",
-          "expected": "4fb2c2a9-4ef9-42e3-9428-42d0330b4346",
-          "actual": "4fb2c2a9-4ef9-42e3-9428-42d0330b4346",
+          "expected": "3bf18121-fe8a-4154-8cc4-a6c1014bc5ae",
+          "actual": "3bf18121-fe8a-4154-8cc4-a6c1014bc5ae",
           "passed": true
         },
         {
@@ -909,7 +909,7 @@
         }
       ],
       "outputs": {
-        "JWT claims (decoded, not verified)": "{\"sub\": \"4fb2c2a9-4ef9-42e3-9428-42d0330b4346\", \"iat\": 1790955787, \"exp\": 1790959387}",
+        "JWT claims (decoded, not verified)": "{\"sub\": \"3bf18121-fe8a-4154-8cc4-a6c1014bc5ae\", \"iat\": 1790959059, \"exp\": 1790962659}",
         "storage after login": "{\"local\": {\"lablens_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6Ik...\"}, \"session\": {}, \"cookie\": \"\"}"
       },
       "notes": [
@@ -974,7 +974,7 @@
         }
       ],
       "outputs": {
-        "replay responses": "{\"/auth/me\": {\"status\": 200, \"body\": {\"user_id\": \"4fb2c2a9-4ef9-42e3-9428-42d0330b4346\", \"name\": \"Kasun Edirisinghe\", \"email\": \"kasun.browser@example.com\"}}, \"/api/reports\": {\"status\": 200, \"body\": []}}"
+        "replay responses": "{\"/auth/me\": {\"status\": 200, \"body\": {\"user_id\": \"3bf18121-fe8a-4154-8cc4-a6c1014bc5ae\", \"name\": \"Kasun Edirisinghe\", \"email\": \"kasun.browser@example.com\"}}, \"/api/reports\": {\"status\": 200, \"body\": []}}"
       },
       "notes": [
         "Logout only deletes the browser's copy. The backend has no logout endpoint, token denylist or token version, so a copied token keeps working until 'exp'."

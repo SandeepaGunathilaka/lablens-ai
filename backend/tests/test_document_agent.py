@@ -117,11 +117,21 @@ def test_non_cbc_or_lipid_document_is_rejected():
         extract_document("other.pdf", _text_pdf("Blood Glucose 95 mg/dL 70-100"))
 
 
-def test_extract_endpoint_accepts_a_valid_pdf(client):
+def test_extract_endpoint_accepts_a_valid_pdf(client, auth_headers):
+    response = client.post(
+        "/agents/document/extract",
+        files={"file": ("cbc.pdf", _text_pdf("Hemoglobin 11.2 g/dL 12-16"), "application/pdf")},
+        headers=auth_headers("user-1"),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["report_type"] == "cbc"
+
+
+def test_extract_endpoint_requires_login(client):
     response = client.post(
         "/agents/document/extract",
         files={"file": ("cbc.pdf", _text_pdf("Hemoglobin 11.2 g/dL 12-16"), "application/pdf")},
     )
 
-    assert response.status_code == 200
-    assert response.json()["report_type"] == "cbc"
+    assert response.status_code == 401

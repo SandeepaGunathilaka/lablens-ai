@@ -7,6 +7,7 @@ inspected; the browser-based cases PRIV-04 and PRIV-05 are in test_privacy_brows
 """
 
 import json
+import re
 import statistics
 import subprocess
 import time
@@ -196,6 +197,9 @@ def test_priv08_audit_log_content(evidence, client, users, audit_logs):
     upload(client, headers, text="", filename="empty_nimal.pdf")
     entries = list(audit_logs.find({}, {"_id": 0}))
     dump = json.dumps(entries, default=str)
+    # Random IDs and timestamps can contain a short needle such as "162" by chance.
+    content = re.sub(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{24}|"
+                     r"\d{4}-\d{2}-\d{2}[ T][\d:.+]+", "", dump, flags=re.IGNORECASE)
     stored_hash = users.find_one({"email": "auditee@example.com"})["password_hash"]
     ev.given(actions=["register", "login", "upload + analysis of a CBC/lipid report", "chat question", "safety validate",
                       "failed upload (empty file)"], report_text=REPORT_TEXT, question="Is my platelet count of 162 dangerous?")
@@ -205,7 +209,7 @@ def test_priv08_audit_log_content(evidence, client, users, audit_logs):
                           ("user name", "Kasun"), ("patient name", "Nimal"), ("file name", "nimal_perera"),
                           ("hemoglobin value", "11.2"), ("platelet value", "162"), ("test name", "Hemoglobin"),
                           ("question text", "dangerous"), ("draft/explanation text", "educational"), ("disclaimer", "medical advice")]:
-        ev.check(f"No {label} in any entry", "absent", "present" if needle.lower() in dump.lower() else "absent")
+        ev.check(f"No {label} in any entry", "absent", "present" if needle.lower() in content.lower() else "absent")
     fields = sorted({k for e in entries for k in e})
     ev.check("Top-level fields", ["action", "agent", "details", "log_id", "report_id", "status", "task_id", "timestamp", "user_id"], fields)
     ev.check("Authentication events (register/login) audited", "not required for this test", "none written",

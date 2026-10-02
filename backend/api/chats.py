@@ -15,7 +15,8 @@ from pymongo.collection import Collection
 from starlette.concurrency import run_in_threadpool
 
 from api.reports import find_report, stored_sources
-from chat_service import ChatAnswer, answer_question
+from chat_intent import classify
+from chat_service import ChatAnswer, answer_question, intent_reply
 from coordinator import AnalyzedLabResult
 from database import get_audit_logs_collection, get_chats_collection, get_reports_collection
 from explanation_agent.router import enforce_rate_limit
@@ -187,10 +188,13 @@ async def send_message(
     enforce_rate_limit(current_user)
 
     results = [AnalyzedLabResult.model_validate(r) for r in report.get("results", [])]
-    wanted = {name.lower() for name in body.test_names}
-    selected = [r for r in results if r.test.lower() in wanted] or results
-    if not selected:
+    if not results:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="This report has no lab values.")
+
+    explicit = {name.lower() for name in body.test_names} & {r.test.lower() for r in results}
+    intent = classify(body.question, [r.test for r in results], tests_selected=bool(explicit))
+    wanted = explicit or {name.lower() for name in intent.tests}
+    selected = [] if intent.reply else [r for r in results if r.test.lower() in wanted] or results
 
     user_message = ChatMessage(
         id=str(uuid.uuid4()),
@@ -199,16 +203,19 @@ async def send_message(
         text=body.question,
         test_names=[r.test for r in selected],
     )
-    answer = await run_in_threadpool(
-        lambda: answer_question(
-            report_id=report["report_id"],
-            user_id=current_user,
-            results=selected,
-            retrieved_sources=stored_sources(report),
-            question=body.question,
-            audit_logs=audit_logs,
+    if intent.reply:
+        answer = intent_reply(report_id=report["report_id"], user_id=current_user, intent=intent, audit_logs=audit_logs)
+    else:
+        answer = await run_in_threadpool(
+            lambda: answer_question(
+                report_id=report["report_id"],
+                user_id=current_user,
+                results=selected,
+                retrieved_sources=stored_sources(report),
+                question=body.question,
+                audit_logs=audit_logs,
+            )
         )
-    )
     assistant_message = ChatMessage(
         id=str(uuid.uuid4()), role="assistant", created_at=datetime.now(timezone.utc), answer=answer
     )

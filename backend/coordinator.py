@@ -20,6 +20,9 @@ from pydantic import BaseModel, Field
 from pymongo.collection import Collection
 
 from agents.document_agent import DocumentExtractionError, DocumentExtractionResponse, extract_document
+from agents.keyword_retriever import KeywordRetriever
+from agents.knowledge_base import KnowledgeBaseValidationError
+from agents.lay_terms import match_lay_term
 from agents.retrieval_agent import MedicalRetrievalAgent
 from agents.retrieval_models import RetrievalRequest, RetrievalResponse
 from agents.safety_agent import (
@@ -165,15 +168,50 @@ def default_retrieval(request: RetrievalRequest) -> RetrievalResponse:
     return _default_retrieval_agent().retrieve(request)
 
 
+_RECORD_TEST_LINE = re.compile(r"\ATest: (?P<name>[^\n]+)")
+
+
+@lru_cache(maxsize=1)
+def _approved_vocabulary() -> KeywordRetriever:
+    return KeywordRetriever()
+
+
+def _canonical_test_name(name: str) -> str | None:
+    """The curated test a name or approved alias refers to, or None if it is not approved vocabulary."""
+    try:
+        document = _approved_vocabulary().retrieve(match_lay_term(name) or name)
+    except (KnowledgeBaseValidationError, OSError):
+        return None
+    return document.test_name if document is not None else None
+
+
+def _evidence_matches_request(requested: str, information: str) -> bool:
+    """False when a passage's "Test:" line names a different curated test than was requested.
+
+    Only names that resolve through approved vocabulary can be compared; a semantic match
+    for free text has no expected record and is accepted as retrieved.
+    """
+    record = _RECORD_TEST_LINE.match(information)
+    if record is None:
+        return True
+    expected = _canonical_test_name(requested)
+    actual = _canonical_test_name(record.group("name"))
+    return expected is None or actual is None or expected == actual
+
+
 def retrieval_response_to_sources(response: RetrievalResponse) -> list[RetrievedSource]:
     """Convert the Retrieval Agent's response into the sources the Coordinator passes on.
 
     Results with found=False are skipped, so those tests take the existing
-    insufficient-information path. Each test appears at most once.
+    insufficient-information path. So are results whose record is for a different
+    test than the one requested. Each test appears at most once.
     """
     sources: dict[str, RetrievedSource] = {}
     for result in response.results:
         if not result.found or result.test_name.lower() in sources:
+            continue
+        if not all(_evidence_matches_request(result.test_name, m.information) for m in result.matches):
+            logger.warning("Discarded retrieved evidence for %r: the record is for a different test", result.test_name)
             continue
         sources[result.test_name.lower()] = RetrievedSource(
             test_name=result.test_name,

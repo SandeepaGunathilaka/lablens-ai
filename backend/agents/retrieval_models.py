@@ -12,6 +12,11 @@ from pydantic import BaseModel, Field, HttpUrl, StringConstraints, model_validat
 
 
 NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+# Bounds far above any real report (longest approved name is 35 characters; a panel has
+# about a dozen tests) so oversized requests are refused before any embedding work.
+MAX_TEST_NAME_LENGTH = 120
+MAX_TEST_NAMES = 50
+TestName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=MAX_TEST_NAME_LENGTH)]
 
 
 class RetrievalRequest(BaseModel):
@@ -20,7 +25,7 @@ class RetrievalRequest(BaseModel):
     task_id: str
     report_id: str
     user_id: str
-    test_names: list[NonBlankText] = Field(min_length=1)
+    test_names: list[TestName] = Field(min_length=1, max_length=MAX_TEST_NAMES)
 
 
 class RetrievalSource(BaseModel):

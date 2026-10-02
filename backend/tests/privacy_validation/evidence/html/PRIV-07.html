@@ -30,9 +30,9 @@ figcaption { font-size: 12px; color: #5c677d; margin-top: 4px; }
     <div class='meta' style='margin-top:6px'>4/4 checks met</div></div>
   </div>
   <h2>Expected behaviour (assessment section 5)</h2><div class='acc'>403 Forbidden, request rejected before any checks run.</div>
-  <h2>Test input</h2><table class='kv'><tr><td>token_of</td><td><pre>A</pre></td></tr><tr><td>payload_user_id</td><td><pre>90dcf4c1-b0eb-4297-91f5-057f2dff77a0 (B)</pre></td></tr></table>
+  <h2>Test input</h2><table class='kv'><tr><td>token_of</td><td><pre>A</pre></td></tr><tr><td>payload_user_id</td><td><pre>cc013524-b86e-4071-be55-f15d4fb4662c (B)</pre></td></tr></table>
   <h2>Expected result vs actual result</h2>
   <table><tr><th>#</th><th>Check</th><th>Expected result</th><th>Actual result</th><th>Result</th></tr><tr class='ok'><td>1</td><td>Status</td><td class='exp'>403</td><td class='act'>403</td><td class='res'>PASS</td></tr><tr class='ok'><td>2</td><td>Detail</td><td class='exp'>Not allowed for this user</td><td class='act'>Not allowed for this user</td><td class='res'>PASS</td></tr><tr class='ok'><td>3</td><td>No safety decision logged (rejected before checks ran)</td><td class='exp'>0</td><td class='act'>0</td><td class='res'>PASS</td></tr><tr class='ok'><td>4</td><td>Control: A with own user_id</td><td class='exp'>200</td><td class='act'>200</td><td class='res'>PASS</td></tr></table>
   <h2>Actual output: response</h2><pre>{&quot;detail&quot;: &quot;Not allowed for this user&quot;}</pre>
-  <div class='meta' style='margin-top:18px'>Commit f90155b55f69 | on frontend | Python 3.13.9 | pytest 8.4.2 | executed 2026-10-02T21:13:46+05:30</div>
+  <div class='meta' style='margin-top:18px'>Commit 16647a0c372a | on Throw-away-test-branch | Python 3.13.9 | pytest 8.4.2 | executed 2026-10-02T22:07:43+05:30</div>
 </div></body></html>

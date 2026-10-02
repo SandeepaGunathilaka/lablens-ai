@@ -1,7 +1,7 @@
 {
   "environment": {
-    "git_branch": "frontend",
-    "git_commit": "f90155b55f695c1e4040772ad9677a949ac5e56d",
+    "git_branch": "Throw-away-test-branch",
+    "git_commit": "16647a0c372a7cd8d75928bcc26e394413406bad",
     "component": "Document Agent (agents/document_agent.py) - deterministic OCR/regex/NER, no LLM",
     "tesseract": "5.4.0.20240606",
     "spacy_model": "en_core_web_sm 3.8.0 (spaCy 3.8.16)",
@@ -9,7 +9,7 @@
     "os": "Windows-11-10.0.26200-SP0",
     "python": "3.13.9",
     "pytest": "8.4.2",
-    "executed_at": "2026-10-02T21:13:46+05:30"
+    "executed_at": "2026-10-02T22:08:03+05:30"
   },
   "records": [
     {

@@ -30,6 +30,15 @@ _CLINICAL_DISALLOWED = (
     ("treatment is", re.compile(r"\btreatment is\b", re.IGNORECASE)),
 )
 _DISALLOWED = _PERSONAL_DISALLOWED + _CLINICAL_DISALLOWED
+# Value judgements and lay labels a draft may use only when the cited evidence uses them
+# too, so a draft cannot adopt a user's claim (e.g. "LDL is the good cholesterol") that
+# contradicts the retrieved sources.
+_EVIDENCE_BOUND_TERMS = (
+    "healthy", "unhealthy", "great", "excellent", "perfect", "ideal", "dangerous",
+    "nothing to worry about", "no cause for concern",
+    "good cholesterol", "bad cholesterol",
+)
+_QUOTES = str.maketrans("", "", "'\"\u2018\u2019\u201c\u201d")
 
 _MAX_FIELD_LENGTH = 1500
 
@@ -79,6 +88,17 @@ def personal_disallowed_reasons(text: str) -> list[str]:
     return _reasons(text, _PERSONAL_DISALLOWED)
 
 
+def unsupported_by_evidence_reasons(text: str, task: ExplanationTask) -> list[str]:
+    """Judgements or labels in the draft that none of the task's retrieved passages use."""
+    evidence = " ".join(passage.excerpt for passage in task.passages).casefold().translate(_QUOTES)
+    draft = text.casefold().translate(_QUOTES)
+    return [
+        f"not supported by the retrieved evidence: '{term}'"
+        for term in _EVIDENCE_BOUND_TERMS
+        if re.search(rf"\b{re.escape(term)}\b", draft) and not re.search(rf"\b{re.escape(term)}\b", evidence)
+    ]
+
+
 def validate_model_draft(draft: ModelDraft, task: ExplanationTask) -> list[str]:
     """Return rejection reasons. An empty list means the draft can be shown."""
 
@@ -111,6 +131,7 @@ def validate_model_draft(draft: ModelDraft, task: ExplanationTask) -> list[str]:
     narrative = "\n".join(fields.values())
     reasons.extend(disallowed_reasons(narrative))
     reasons.extend(disallowed_reasons("\n".join(draft.sources_used)))
+    reasons.extend(unsupported_by_evidence_reasons(narrative, task))
 
     allowed = {passage.title.casefold() for passage in task.passages}
     if not draft.sources_used:

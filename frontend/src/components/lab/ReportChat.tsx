@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, Info, Loader2, MessageSquarePlus, Pencil, SendHorizontal, Trash2 } from "lucide-react";
+import { ExternalLink, Info, Loader2, MessageSquarePlus, Pencil, SendHorizontal, Stethoscope, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -71,6 +71,12 @@ function Message({ m }: { m: ChatMessage }) {
   if (!a) return null;
   if (a.status === "fallback") {
     return <p className="flex items-start gap-2 rounded-xl bg-warning-soft px-4 py-3 text-sm text-warning-foreground"><Info className="mt-0.5 h-4 w-4 shrink-0" />{a.message}</p>;
+  }
+  if (a.status === "redirect") {
+    return <p className="flex max-w-[85%] items-start gap-2 rounded-xl border border-primary/30 bg-accent/60 px-4 py-3 text-sm text-accent-foreground"><Stethoscope className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{a.message}</p>;
+  }
+  if (a.status === "reply") {
+    return <p className="max-w-[85%] rounded-2xl rounded-bl-md bg-muted px-4 py-2.5 text-sm">{a.message}</p>;
   }
   return (
     <div className="space-y-3">

@@ -71,7 +71,7 @@ def write_doc(directory, identifier, name, aliases):
         "title": "Fixture", "definition": "Fixture definition.",
         "what_it_measures": "Fixture measurement.", "general_information": "Fixture context.",
         "source": {"publisher": "Fixture", "title": "Fixture source",
-                   "url": "https://example.invalid/source", "accessed_date": "2026-09-28"},
+                   "url": "https://medlineplus.gov/source", "accessed_date": "2026-09-28"},
     }
     (directory / f"{identifier}.json").write_text(json.dumps(payload), encoding="utf-8")
 

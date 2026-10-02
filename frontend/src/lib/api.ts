@@ -73,7 +73,8 @@ export interface AnswerFinding {
 
 export interface ChatAnswer {
   task_id: string;
-  status: "approved" | "fallback";
+  /** "reply" and "redirect" carry only a message: small talk, off-topic notes and doctor referrals. */
+  status: "approved" | "fallback" | "reply" | "redirect";
   findings: AnswerFinding[];
   message: string | null;
 }

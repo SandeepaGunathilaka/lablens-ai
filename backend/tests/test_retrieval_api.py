@@ -15,9 +15,11 @@ from agents.knowledge_base import KnowledgeBaseValidationError
 from agents.semantic_retriever import SemanticRetrievalIntegrityError
 from agents.vector_store import VectorIndexNotBuiltError, VectorIndexStaleError
 from main import app
+from security.tokens import create_access_token
 
 
 IDS = {"task_id": " task-1 ", "report_id": "report/2", "user_id": "user-3"}
+HEADERS = {"Authorization": f"Bearer {create_access_token('user-3')}"}
 FOUND = {
     "test_name": "Hgb", "found": True,
     "matches": [{
@@ -53,7 +55,7 @@ def test_success_and_abstention_are_unwrapped_200(client, agent, results, users,
     payload = {**IDS, "test_names": [result["test_name"] for result in results]}
     expected = {**IDS, "results": results}
     agent.retrieve.return_value = RetrievalResponse.model_validate(expected)
-    response = client.post("/api/retrieval", json=payload)
+    response = client.post("/api/retrieval", json=payload, headers=HEADERS)
     assert response.status_code == 200
     assert response.json() == expected
     agent.retrieve.assert_called_once()
@@ -64,11 +66,23 @@ def test_success_and_abstention_are_unwrapped_200(client, agent, results, users,
     assert audit_logs.count_documents({}) == 0
 
 
+def test_retrieval_requires_login(client, agent):
+    response = client.post("/api/retrieval", json={**IDS, "test_names": ["Hgb"]})
+    assert response.status_code == 401
+    agent.retrieve.assert_not_called()
+
+
+def test_retrieval_rejects_another_users_id(client, agent):
+    response = client.post("/api/retrieval", json={**IDS, "user_id": "user-4", "test_names": ["Hgb"]}, headers=HEADERS)
+    assert response.status_code == 403
+    agent.retrieve.assert_not_called()
+
+
 @pytest.mark.parametrize("missing", ["task_id", "report_id", "user_id", "test_names"])
 def test_missing_fields_return_422(client, agent, missing):
     payload = {**IDS, "test_names": ["Hgb"]}
     del payload[missing]
-    response = client.post("/api/retrieval", json=payload)
+    response = client.post("/api/retrieval", json=payload, headers=HEADERS)
     assert response.status_code == 422
     assert response.json()["detail"][0]["loc"] == ["body", missing]
     agent.retrieve.assert_not_called()
@@ -76,7 +90,7 @@ def test_missing_fields_return_422(client, agent, missing):
 
 @pytest.mark.parametrize("names", [[], [""], [" \t"], [None], "Hgb"])
 def test_invalid_names_return_422(client, agent, names):
-    response = client.post("/api/retrieval", json={**IDS, "test_names": names})
+    response = client.post("/api/retrieval", json={**IDS, "test_names": names}, headers=HEADERS)
     assert response.status_code == 422
     agent.retrieve.assert_not_called()
 
@@ -92,7 +106,7 @@ def test_internal_errors_are_generic_500(agent, error_type):
     )
     # TestClient normally re-raises server errors; disable that to inspect the wire response.
     response = TestClient(app, raise_server_exceptions=False).post(
-        "/api/retrieval", json={**IDS, "test_names": ["Hgb"]},
+        "/api/retrieval", json={**IDS, "test_names": ["Hgb"]}, headers=HEADERS,
     )
     assert response.status_code == 500
     assert response.text == "Internal Server Error"
@@ -107,7 +121,7 @@ def test_provider_initialization_failure_is_also_generic_500(client):
 
     app.dependency_overrides[retrieval.get_retrieval_agent] = failing_provider
     response = TestClient(app, raise_server_exceptions=False).post(
-        "/api/retrieval", json={**IDS, "test_names": ["Hgb"]},
+        "/api/retrieval", json={**IDS, "test_names": ["Hgb"]}, headers=HEADERS,
     )
     assert response.status_code == 500
     assert response.text == "Internal Server Error"

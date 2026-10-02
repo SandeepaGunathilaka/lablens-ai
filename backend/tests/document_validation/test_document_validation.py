@@ -1,4 +1,4 @@
-﻿"""Vulnerability assessment suite for the Document Agent (RA-01..RA-15).
+"""Vulnerability assessment suite for the Document Agent (RA-01..RA-15).
 
 Each test follows one row of the assessment's test-case table. The real Document Agent
 runs on generated PDFs and PNGs: selectable-text PDFs go through PyMuPDF, images and
@@ -41,9 +41,11 @@ from coordinator import (
 )
 from explanation_agent.service import ExplanationService
 from main import app
+from security.tokens import create_access_token
 
 KB_DIR = Path(__file__).resolve().parents[2] / "data" / "knowledge_base"
 CBC = "Hemoglobin 10.2 g/dL 12.0-15.5\nWBC 6.4 x10^9/L 4.0-11.0\nPlatelets 250 x10^9/L 150-400"
+AUTH = {"Authorization": f"Bearer {create_access_token('user-1')}"}
 TRANSCRIPTION_FIELDS = ["test", "value", "unit", "reference_range", "confidence", "needs_verification"]
 
 
@@ -204,7 +206,7 @@ def test_ra02_unsupported_test_vocabulary_boundary(evidence):
         extract(unsupported)
     ev.check("Report with no supported test rejected", "No supported CBC or Lipid Profile tests were detected in this report.", str(error.value))
 
-    api = TestClient(app).post("/agents/document/extract", files={"file": ("glucose.pdf", text_pdf(unsupported), "application/pdf")})
+    api = TestClient(app).post("/agents/document/extract", files={"file": ("glucose.pdf", text_pdf(unsupported), "application/pdf")}, headers=AUTH)
     ev.check("API status for unsupported report", 422, api.status_code)
 
     ev.output("Extraction (mixed report)", list(response.values()))
@@ -488,11 +490,11 @@ def test_ra09_upload_integrity(evidence, monkeypatch):
         ev.check(f"{name}: rejected", message, actual)
 
     client = TestClient(app)
-    api = client.post("/agents/document/extract", files={"file": ("report.pdf", b"MZ fake", "application/pdf")})
+    api = client.post("/agents/document/extract", files={"file": ("report.pdf", b"MZ fake", "application/pdf")}, headers=AUTH)
     ev.check("API status for spoofed file", 422, api.status_code)
 
     monkeypatch.setattr(pytesseract.pytesseract, "tesseract_cmd", "missing-tesseract.exe")
-    api = client.post("/agents/document/extract", files={"file": ("scan.png", png, "image/png")})
+    api = client.post("/agents/document/extract", files={"file": ("scan.png", png, "image/png")}, headers=AUTH)
     ev.check("OCR engine unavailable: API status", 503, api.status_code)
     ev.check("OCR engine unavailable: message", "Tesseract OCR is not installed or available on this server.", api.json().get("detail"))
 

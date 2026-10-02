@@ -18,7 +18,8 @@ from jose import jwt
 
 import coordinator
 from agents.knowledge_base import KnowledgeBaseLoader, validate_knowledge_base
-from agents.retrieval_models import RetrievalMatch, RetrievalRequest, RetrievalResponse, RetrievalResult, RetrievalSource
+from agents.retrieval_models import (MAX_TEST_NAME_LENGTH, MAX_TEST_NAMES, RetrievalMatch, RetrievalRequest,
+                                     RetrievalResponse, RetrievalResult, RetrievalSource)
 from agents.safety_agent import DISCLAIMER, validate_draft
 from agents.semantic_retriever import FROZEN_POLICY, SemanticRetrievalIntegrityError, SemanticRetriever
 from agents.vector_store import VectorIndexStaleError
@@ -36,6 +37,7 @@ import mongomock
 KB = load_kb_files()
 IDS = {"task_id": "task-ir", "report_id": "report-ir", "user_id": "user-a"}
 HB_REPORT = "Hemoglobin 10.2 g/dL 12.0-15.5"
+USER_A = {"Authorization": f"Bearer {create_access_token('user-a')}"}
 
 
 @pytest.fixture(autouse=True)
@@ -51,7 +53,7 @@ def production_services(monkeypatch, real_retrieval):
 
 
 def retrieve(client, *names: str):
-    response = client.post("/api/retrieval", json={**IDS, "test_names": list(names)})
+    response = client.post("/api/retrieval", json={**IDS, "test_names": list(names)}, headers=USER_A)
     assert response.status_code == 200, response.text
     return response.json()["results"]
 
@@ -146,9 +148,8 @@ def test_ir01_exact_term_retrieval(evidence, client, real_retrieval):
     ev.verify()
 
 
-@pytest.mark.xfail(strict=True, reason="IR-F01: semantic paraphrases abstain under the frozen margin policy")
 def test_ir02_semantic_retrieval(evidence, client, real_retrieval):
-    ev = evidence("IR-02", "Semantic retrieval accuracy", "Semantic fallback (MiniLM + Chroma + frozen acceptance policy)",
+    ev = evidence("IR-02", "Semantic retrieval accuracy", "Curated lay phrases + semantic fallback (MiniLM + Chroma + frozen policy)",
                   "Semantically relevant LDL evidence should still be retrieved; ranking should remain reasonable.",
                   finding="IR-F01")
     cases = {"bad cholesterol meaning": "LDL", "good cholesterol": "HDL",
@@ -161,9 +162,11 @@ def test_ir02_semantic_retrieval(evidence, client, real_retrieval):
         ev.check(f"'{query}': rank-1 candidate", expected, top[0].test_name)
         ev.check(f"'{query}': evidence returned", expected, returned_document(result) or "no evidence (abstained)")
         ev.output(f"ranking for '{query}'", ranks(real_retrieval, query) + [f"margin {top[0].similarity - top[1].similarity:.3f}"])
-    ev.note("The ranking is reasonable, but the conservative acceptance margin (calibrated for >=95% precision, ~11% "
-            "coverage) rejects most paraphrases, so relevant evidence is withheld. The failure is safe (no wrong "
-            "evidence), but it lowers recall: the user gets 'insufficient information' instead of the LDL passage.")
+    ev.note("Retest of IR-F01. Previously the conservative acceptance margin (calibrated for >=95% precision, ~11% "
+            "coverage) rejected 'bad cholesterol meaning' (margin 0.074) and 'good cholesterol' (0.013). The fix adds "
+            "a curated lay-phrase step (agents/lay_terms.py) between exact vocabulary and the semantic fallback: lay "
+            "labels used by the records themselves map to exactly one test, and question filler ('what is', "
+            "'meaning') is removed before the exact match. The frozen semantic policy is unchanged.")
     ev.verify()
 
 
@@ -229,15 +232,19 @@ def test_ir05_query_stuffing(evidence, client, real_retrieval):
 
     [base] = retrieve(client, baseline)
     ev.check("Baseline returns LDL", "LDL", returned_document(base))
-    results = retrieve(client, *padded.values())
-    for (label, query), result in zip(padded.items(), results):
-        doc = returned_document(result)
-        ev.check(f"{label}: padding does not pull in another test's evidence", "LDL or no evidence",
+    for label, query in padded.items():
+        hit = real_retrieval.hybrid.retrieve(query)
+        doc = hit.document.test_name if hit.found else None
+        ev.check(f"{label}: padding does not pull in another test's evidence (retriever)", "LDL or no evidence",
                  doc or "no evidence (abstained)", passed=doc in (None, "LDL"))
         ev.output(f"ranking for '{label}'", ranks(real_retrieval, query))
+    api = client.post("/api/retrieval", json={**IDS, "test_names": list(padded.values())}, headers=USER_A)
+    ev.check(f"API: padded names over {MAX_TEST_NAME_LENGTH} characters rejected", 422, api.status_code)
     ev.note("For 'LDL + 30x hemoglobin' the padding moves Hemoglobin to rank 1 in the raw similarity ranking, but the "
-            "margin to rank 2 is below the acceptance threshold, so nothing is returned to the pipeline. The acceptance "
-            "policy, not the ranking, is the control that stops the stuffing.")
+            "margin to rank 2 is below the acceptance threshold, so the retriever returns nothing. The acceptance "
+            "policy, not the ranking, is the control that stops the stuffing. Since the IR-F05 fix the API also "
+            f"rejects test names longer than {MAX_TEST_NAME_LENGTH} characters, so these padded queries are now "
+            "refused before retrieval.")
     ev.verify()
 
 
@@ -313,7 +320,6 @@ def test_ir07_poisoned_knowledge_base_chunk(evidence, tmp_path):
 # --- IR-08 Hallucination due to retrieval ----------------------------------------------------
 
 
-@pytest.mark.xfail(strict=True, reason="IR-F02: evidence for a different test is accepted without a consistency check")
 def test_ir08a_irrelevant_retrieval(evidence):
     ev = evidence("IR-08a", "Hallucination from irrelevant retrieval", "Consistency between the requested test and the retrieved record",
                   "Explanation should acknowledge uncertainty/conflict and avoid unsupported clinical claims derived from bad retrieval.",
@@ -331,10 +337,10 @@ def test_ir08a_irrelevant_retrieval(evidence):
     ev.absent("No platelet facts attributed to hemoglobin", text, "clot")
     ev.output("safety decisions", decisions)
     ev.output("final_response", text)
-    ev.note("The retrieved passage starts with 'Test: Platelets', but neither the Coordinator, the Explanation Agent "
-            "nor the Safety Agent compares it with the requested test name. The real retriever only returns another "
-            "test's record via a semantic accept (none observed in IR-01 to IR-06); the gap is the missing "
-            "defence-in-depth check.")
+    ev.contains("User told evidence is unavailable for Hemoglobin", text, INSUFFICIENT_INFORMATION_MESSAGE)
+    ev.note("Retest of IR-F02. The Coordinator now resolves both the requested test name and the record's 'Test:' "
+            "line through the approved vocabulary and discards evidence for a different test, so Hemoglobin takes the "
+            "insufficient-information path instead of being explained with the Platelets record.")
     ev.verify()
 
 
@@ -390,7 +396,6 @@ def test_ir09_source_provenance(evidence, client, auth_headers):
     ev.verify()
 
 
-@pytest.mark.xfail(strict=True, reason="IR-F03: KB validation has no trusted-source allow-list")
 def test_ir10_trusted_corpus_boundary(evidence, tmp_path, real_retrieval):
     ev = evidence("IR-10", "Source reliability / trusted corpus boundary", "Ingestion surface, index integrity and source vetting",
                   "Production retrieval should be limited to the curated/trusted corpus or clearly distinguish untrusted material.",
@@ -430,9 +435,9 @@ def test_ir10_trusted_corpus_boundary(evidence, tmp_path, real_retrieval):
     ev.check("Document from an unapproved publisher over plain HTTP is rejected", "rejected", vetting,
              passed=vetting.startswith("rejected"))
     ev.output("knowledge-base publishers in production", sorted({d["source"]["publisher"] for d in KB.values()}))
-    ev.note("The production corpus is the repository's data/knowledge_base directory and there is no runtime ingestion "
-            "route, so the boundary is enforced by repository access. Within it, validation checks structure only: "
-            "any publisher or http:// URL is accepted and nothing marks material as untrusted.")
+    ev.note("Retest of IR-F03. The production corpus is the repository's data/knowledge_base directory and there is no "
+            "runtime ingestion route. KB validation now also requires every source to be an https:// page on an "
+            "approved publisher domain (APPROVED_SOURCE_DOMAINS: medlineplus.gov, cdc.gov, nih.gov).")
     ev.verify()
 
 
@@ -451,7 +456,6 @@ PROTECTED = [
 ]
 
 
-@pytest.mark.xfail(strict=True, reason="IR-F04: /api/retrieval and /agents/document/extract accept unauthenticated calls")
 def test_ir11_unauthenticated_access(evidence, client):
     ev = evidence("IR-11", "Unauthenticated retrieval access", "get_current_user dependency on every route",
                   "Protected operation should return 401/403 (as designed) and no private report/retrieval data.",
@@ -468,10 +472,11 @@ def test_ir11_unauthenticated_access(evidence, client):
     ev.check("POST /agents/document/extract (no token, patient report)", "401", str(extract.status_code))
     ev.output("/api/retrieval response without a token", retrieval.json())
     ev.output("/agents/document/extract response without a token", extract.json())
-    ev.note("Every report, chat, audit, explanation and safety route rejects anonymous calls. The retrieval and "
-            "document-extraction routes do not: anyone can run OCR/NER on an uploaded report and load the embedding "
-            "model, and /api/retrieval echoes whatever user_id is sent. Neither stores data or exposes another user's "
-            "records, so the impact is resource abuse and an unauthenticated processing surface.")
+    spoofed = client.post("/api/retrieval", json={**IDS, "user_id": "someone-else", "test_names": ["Hemoglobin"]},
+                          headers=USER_A)
+    ev.check("POST /api/retrieval with a token for another user_id", "403", str(spoofed.status_code))
+    ev.note("Retest of IR-F04. Both routes now require get_current_user, and /api/retrieval also refuses a body "
+            "user_id that differs from the token (403), matching the Safety endpoint.")
     ev.verify()
 
 
@@ -543,7 +548,6 @@ def test_ir13_cross_user_resource_access(evidence, client, auth_headers, audit_l
 # --- IR-14 / IR-15 API and communication security -------------------------------------------------
 
 
-@pytest.mark.xfail(strict=True, reason="IR-F05: no size limits on retrieval requests")
 def test_ir14_api_validation_and_limits(evidence, client, real_retrieval):
     ev = evidence("IR-14", "API validation, error leakage and resource abuse", "RetrievalRequest schema, error handler, request limits",
                   "API should return controlled 4xx responses, enforce practical limits, avoid internal paths/secrets/tracebacks, and remain responsive.",
@@ -555,7 +559,7 @@ def test_ir14_api_validation_and_limits(evidence, client, real_retrieval):
              many_names=f"{len(many)} names in one request")
 
     def post(**kwargs):
-        return client.post("/api/retrieval", **kwargs)
+        return client.post("/api/retrieval", headers={**USER_A, **kwargs.pop("headers", {})}, **kwargs)
 
     cases = {
         "malformed JSON": post(content='{"task_id": "t", "test_names": [', headers={"Content-Type": "application/json"}),
@@ -582,15 +586,17 @@ def test_ir14_api_validation_and_limits(evidence, client, real_retrieval):
     ev.check("Server still responsive afterwards", 200, client.get("/health").status_code)
 
     app.dependency_overrides[retrieval_api.get_retrieval_agent] = lambda: _Exploding()
-    crash = TestClient(app, raise_server_exceptions=False).post("/api/retrieval", json={**IDS, "test_names": ["LDL"]})
+    crash = TestClient(app, raise_server_exceptions=False).post("/api/retrieval", json={**IDS, "test_names": ["LDL"]},
+                                                                headers=USER_A)
     app.dependency_overrides[retrieval_api.get_retrieval_agent] = lambda: real_retrieval.agent
     ev.check("internal error: status and body", "500 Internal Server Error", f"{crash.status_code} {crash.text}")
     for needle in ("C:\\", "mongodb", "Traceback"):
         ev.absent(f"internal error: no '{needle}'", crash.text, needle)
     ev.output("422 body (wrong type)", cases["wrong type"].json())
-    ev.note(f"A {len(long_query):,}-character query took {long_secs:.2f}s and {len(many)} names took {many_secs:.2f}s; both "
-            "were processed in full. Cost grows linearly with the number of names (one embedding per unknown name), "
-            "and the route needs no login (IR-11).")
+    ev.note(f"Retest of IR-F05. RetrievalRequest now limits each test name to {MAX_TEST_NAME_LENGTH} characters and a "
+            f"request to {MAX_TEST_NAMES} names, so both oversized requests are refused with 422 before any embedding "
+            f"work ({long_secs:.2f}s and {many_secs:.2f}s, previously 0.08s and about 3.3s of full processing). The "
+            "route also requires a login now (IR-11).")
     ev.verify()
 
 

@@ -201,6 +201,8 @@ def status_of(record: dict) -> tuple[str, str, str]:
         return "FAIL", "FAIL", "fail"
     if outcome in ("passed", "xpassed") and record.get("weakness"):
         return "PASS*", f"AS PREDICTED - weakness {finding} confirmed", "weak"
+    if outcome in ("passed", "xpassed") and finding:
+        return "PASS", f"PASS - retest of {finding} (fixed)", "pass"
     if outcome in ("passed", "xpassed"):
         return "PASS", "PASS", "pass"
     return outcome.upper(), outcome.upper(), "fail"
@@ -258,11 +260,18 @@ def _summary_page(records: list[dict], env: dict, cfg: dict) -> str:
     count = lambda s: sum(v == s for v in statuses.values())  # noqa: E731
     executed = len(groups)
     findings = sorted({r["finding"] for r in records if r.get("finding") and status_of(r)[0] in ("FAIL", "PASS*")})
+    fixed = sorted({r["finding"] for r in records if r.get("finding") and status_of(r)[1].endswith("(fixed)")})
+
+    def finding_cell(r: dict) -> str:
+        if not r.get("finding"):
+            return ""
+        return f"{r['finding']} (fixed)" if r["finding"] in fixed else r["finding"]
+
     rows = "".join(
         f"<tr class='{ {'pass': 'ok', 'fail': 'bad', 'weak': 'weak', 'inc': 'inc'}[status_of(r)[2]] }'>"
         f"<td>{esc(r['val_id'])}</td><td>{esc(r['title'])}</td><td>{esc(r['acceptance'])}</td>"
         f"<td>{sum(c['passed'] for c in r['checks'])}/{len(r['checks'])}</td>"
-        f"<td class='res'>{esc(status_of(r)[0])}</td><td>{esc(r.get('finding') or '')}</td></tr>"
+        f"<td class='res'>{esc(status_of(r)[0])}</td><td>{esc(finding_cell(r))}</td></tr>"
         for r in records
     )
     env_rows = "".join(f"<tr><td>{esc(k)}</td><td>{esc(v)}</td></tr>" for k, v in env.items())
@@ -280,7 +289,8 @@ def _summary_page(records: list[dict], env: dict, cfg: dict) -> str:
     <tr><td>Passed with documented weakness (PASS*)</td><td>{count('PASS*')}</td></tr>
     <tr><td>Failed (confirmed findings)</td><td>{count('FAIL')}</td></tr>
     <tr><td>Inconclusive</td><td>{count('INCONCLUSIVE')}</td></tr>
-    <tr><td>Findings / weaknesses</td><td>{esc(', '.join(findings) or 'None')}</td></tr>
+    <tr><td>Open findings / weaknesses</td><td>{esc(', '.join(findings) or 'None')}</td></tr>
+    <tr><td>Findings fixed and retested</td><td>{esc(', '.join(fixed) or 'None')}</td></tr>
   </table>
   <h2>Test cases</h2>
   <table><tr><th>ID</th><th>Test</th><th>Expected result</th><th>Checks met</th><th>Status</th><th>Finding</th></tr>{rows}</table>

@@ -1,12 +1,12 @@
 {
   "environment": {
-    "git_branch": "frontend",
-    "git_commit": "f90155b55f695c1e4040772ad9677a949ac5e56d",
+    "git_branch": "Throw-away-test-branch",
+    "git_commit": "16647a0c372a7cd8d75928bcc26e394413406bad",
     "working_tree": "uncommitted changes present",
     "os": "Windows-11-10.0.26200-SP0",
     "python": "3.13.9",
     "pytest": "8.4.2",
-    "executed_at": "2026-10-02T21:13:45+05:30",
+    "executed_at": "2026-10-02T22:06:11+05:30",
     "component": "Medical Retrieval Agent (keyword + semantic hybrid), auth/API layer (FastAPI)",
     "embedding_model": "sentence-transformers/all-MiniLM-L6-v2 (real model, CPU)",
     "vector_store": "ChromaDB 1.5.9 (index rebuilt from the curated KB per run)",
@@ -110,7 +110,7 @@
     {
       "val_id": "IR-02",
       "title": "Semantic retrieval accuracy",
-      "control": "Semantic fallback (MiniLM + Chroma + frozen acceptance policy)",
+      "control": "Curated lay phrases + semantic fallback (MiniLM + Chroma + frozen policy)",
       "acceptance": "Semantically relevant LDL evidence should still be retrieved; ranking should remain reasonable.",
       "nodeid": "tests/retrieval_security_validation/test_retrieval_security.py::test_ir02_semantic_retrieval",
       "path": "C:\\Users\\ASUS TUF\\Documents\\GitHub\\lablens-ai\\backend\\tests\\retrieval_security_validation\\test_retrieval_security.py",
@@ -129,8 +129,8 @@
         {
           "description": "'bad cholesterol meaning': evidence returned",
           "expected": "LDL",
-          "actual": "no evidence (abstained)",
-          "passed": false
+          "actual": "LDL",
+          "passed": true
         },
         {
           "description": "'good cholesterol': rank-1 candidate",
@@ -141,8 +141,8 @@
         {
           "description": "'good cholesterol': evidence returned",
           "expected": "HDL",
-          "actual": "no evidence (abstained)",
-          "passed": false
+          "actual": "HDL",
+          "passed": true
         },
         {
           "description": "'oxygen carrying protein in red blood cells': rank-1 candidate",
@@ -163,12 +163,12 @@
         "ranking for 'oxygen carrying protein in red blood cells'": "[\"1. Hemoglobin (similarity 0.454)\", \"2. WBC (similarity 0.167)\", \"3. HDL (similarity 0.113)\", \"margin 0.286\"]"
       },
       "notes": [
-        "The ranking is reasonable, but the conservative acceptance margin (calibrated for >=95% precision, ~11% coverage) rejects most paraphrases, so relevant evidence is withheld. The failure is safe (no wrong evidence), but it lowers recall: the user gets 'insufficient information' instead of the LDL passage."
+        "Retest of IR-F01. Previously the conservative acceptance margin (calibrated for >=95% precision, ~11% coverage) rejected 'bad cholesterol meaning' (margin 0.074) and 'good cholesterol' (0.013). The fix adds a curated lay-phrase step (agents/lay_terms.py) between exact vocabulary and the semantic fallback: lay labels used by the records themselves map to exactly one test, and question filler ('what is', 'meaning') is removed before the exact match. The frozen semantic policy is unchanged."
       ],
       "images": [],
       "finding": "IR-F01",
       "weakness": false,
-      "outcome": "xfailed"
+      "outcome": "passed"
     },
     {
       "val_id": "IR-03",
@@ -356,15 +356,21 @@
           "passed": true
         },
         {
-          "description": "question + CBC padding: padding does not pull in another test's evidence",
+          "description": "question + CBC padding: padding does not pull in another test's evidence (retriever)",
           "expected": "LDL or no evidence",
           "actual": "no evidence (abstained)",
           "passed": true
         },
         {
-          "description": "LDL + 30x hemoglobin: padding does not pull in another test's evidence",
+          "description": "LDL + 30x hemoglobin: padding does not pull in another test's evidence (retriever)",
           "expected": "LDL or no evidence",
           "actual": "no evidence (abstained)",
+          "passed": true
+        },
+        {
+          "description": "API: padded names over 120 characters rejected",
+          "expected": "422",
+          "actual": "422",
           "passed": true
         }
       ],
@@ -373,7 +379,7 @@
         "ranking for 'LDL + 30x hemoglobin'": "[\"1. Hemoglobin (similarity 0.521)\", \"2. LDL (similarity 0.374)\", \"3. HDL (similarity 0.337)\"]"
       },
       "notes": [
-        "For 'LDL + 30x hemoglobin' the padding moves Hemoglobin to rank 1 in the raw similarity ranking, but the margin to rank 2 is below the acceptance threshold, so nothing is returned to the pipeline. The acceptance policy, not the ranking, is the control that stops the stuffing."
+        "For 'LDL + 30x hemoglobin' the padding moves Hemoglobin to rank 1 in the raw similarity ranking, but the margin to rank 2 is below the acceptance threshold, so the retriever returns nothing. The acceptance policy, not the ranking, is the control that stops the stuffing. Since the IR-F05 fix the API also rejects test names longer than 120 characters, so these padded queries are now refused before retrieval."
       ],
       "images": [],
       "finding": null,
@@ -542,33 +548,39 @@
         {
           "description": "Mismatched evidence detected (insufficient information or flagged)",
           "expected": "flagged / insufficient",
-          "actual": "used as Hemoglobin evidence",
-          "passed": false
+          "actual": "not used",
+          "passed": true
         },
         {
           "description": "Platelet source not presented as the basis for Hemoglobin",
           "expected": "no \"Platelet Count\"",
-          "actual": "found \"Platelet Count\"",
-          "passed": false
+          "actual": "no \"Platelet Count\"",
+          "passed": true
         },
         {
           "description": "No platelet facts attributed to hemoglobin",
           "expected": "no \"clot\"",
-          "actual": "found \"clot\"",
-          "passed": false
+          "actual": "no \"clot\"",
+          "passed": true
+        },
+        {
+          "description": "User told evidence is unavailable for Hemoglobin",
+          "expected": "contains \"LabLens could not find sufficient information about this test in its approved knowledge base.\"",
+          "actual": "contains \"LabLens could not find sufficient information about this test in its approved knowledge base.\"",
+          "passed": true
         }
       ],
       "outputs": {
         "safety decisions": "[\"approved\"]",
-        "final_response": "Hemoglobin: your result is 10.2 g/dL; the range on your report is 12.0-15.5, which is low.\nWhat Hemoglobin measures is limited to the retrieved sources named here: Platelet Tests.\nThe recorded result is 10.2 g/dL. The reference range supplied is 12.0-15.5. The supplied status is low. Those retrieved sources were used as the sole basis for this explanation.\nGeneral educational context from the retrieved sources. From \"Platelet Tests\": Test: Platelets Title: Platelet Count Definition: A platelet count is a blood test that counts platelets, also known as thrombocytes. What it measures: The test measures how many platelets are present in a blood sample. General information: Platelet counts may be included in a complete blood count (CBC). Platelets help form clots to stop bleeding. No personal condition is assigned.\nDiscuss this result with a qualified healthcare professional. No medication or treatment advice is provided.\n\nThis summary is for general education only and is not medical advice. Please talk to your doctor about your results."
+        "final_response": "Hemoglobin: your result is 10.2 g/dL; the range on your report is 12.0-15.5, which is low.\nLabLens could not find sufficient information about this test in its approved knowledge base.\nThere is not enough reliable information in the retrieved sources to describe what Hemoglobin measures.\nThe recorded result is 10.2 g/dL. The reference range supplied is 12.0-15.5. The supplied status is low. There is not enough reliable information to explain this result further. The recorded result was not changed.\nThere is not enough reliable information to describe a possible meaning. No personal condition is assigned.\nDiscuss this result with a qualified healthcare professional. No medication or treatment advice is provided.\n\nThis summary is for general education only and is not medical advice. Please talk to your doctor about your results."
       },
       "notes": [
-        "The retrieved passage starts with 'Test: Platelets', but neither the Coordinator, the Explanation Agent nor the Safety Agent compares it with the requested test name. The real retriever only returns another test's record via a semantic accept (none observed in IR-01 to IR-06); the gap is the missing defence-in-depth check."
+        "Retest of IR-F02. The Coordinator now resolves both the requested test name and the record's 'Test:' line through the approved vocabulary and discards evidence for a different test, so Hemoglobin takes the insufficient-information path instead of being explained with the Platelets record."
       ],
       "images": [],
       "finding": "IR-F02",
       "weakness": false,
-      "outcome": "xfailed"
+      "outcome": "passed"
     },
     {
       "val_id": "IR-08b",
@@ -781,20 +793,20 @@
         {
           "description": "Document from an unapproved publisher over plain HTTP is rejected",
           "expected": "rejected",
-          "actual": "accepted",
-          "passed": false
+          "actual": "rejected: Knowledge-base validation failed:\nC:\\Users\\ASUS TUF\\AppData\\Local\\Temp\\pytest-of-ASUS TUF\\pytest-18\\test_ir10_trusted_corpus_bound0\\kb\\ldl_blog.json: source.url: must use https\nC:\\Users\\ASUS TUF\\AppData\\Local\\Temp\\pytest-of-ASUS TUF\\pytest-18\\test_ir10_trusted_corpus_bound0\\kb\\ldl_blog.json: source.url: 'random-health-blog.example' is not an approved publisher domain",
+          "passed": true
         }
       ],
       "outputs": {
         "knowledge-base publishers in production": "[\"CDC\", \"MedlinePlus\"]"
       },
       "notes": [
-        "The production corpus is the repository's data/knowledge_base directory and there is no runtime ingestion route, so the boundary is enforced by repository access. Within it, validation checks structure only: any publisher or http:// URL is accepted and nothing marks material as untrusted."
+        "Retest of IR-F03. The production corpus is the repository's data/knowledge_base directory and there is no runtime ingestion route. KB validation now also requires every source to be an https:// page on an approved publisher domain (APPROVED_SOURCE_DOMAINS: medlineplus.gov, cdc.gov, nih.gov)."
       ],
       "images": [],
       "finding": "IR-F03",
       "weakness": false,
-      "outcome": "xfailed"
+      "outcome": "passed"
     },
     {
       "val_id": "IR-11",
@@ -859,27 +871,33 @@
         {
           "description": "POST /api/retrieval (no token, arbitrary user_id)",
           "expected": "401",
-          "actual": "200",
-          "passed": false
+          "actual": "401",
+          "passed": true
         },
         {
           "description": "POST /agents/document/extract (no token, patient report)",
           "expected": "401",
-          "actual": "200",
-          "passed": false
+          "actual": "401",
+          "passed": true
+        },
+        {
+          "description": "POST /api/retrieval with a token for another user_id",
+          "expected": "403",
+          "actual": "403",
+          "passed": true
         }
       ],
       "outputs": {
-        "/api/retrieval response without a token": "{\"task_id\": \"task-ir\", \"report_id\": \"report-ir\", \"user_id\": \"someone-else\", \"results\": [{\"test_name\": \"Hemoglobin\", \"found\": true, \"matches\": [{\"information\": \"Test: Hemoglobin\\n\\nTitle: Hemoglobin Test\\n\\nDefinition: Hemoglobin is an iron-containing protein found in red blood cells that helps carry oxygen from the lungs to the body's tissues.\\n\\nWhat it measures: A hemoglobin test measures the amount of hemoglobin in a blood sample.\\n\\nGeneral information: Hemoglobin testing is commonly included as part of a complete blood count. LabLens uses this information only for educational explanation and does not use it to diagnose a condition.\\n\\nSource publisher: MedlinePlus\\n\\nSource accessed date: 2026-09-28\", \"sources\": [{\"title\": \"Hemoglobin Test\", \"url\": \"https://medlineplus.gov/lab-tests/hemoglobin-test/\"}]}]}]}",
-        "/agents/document/extract response without a token": "{\"extraction_method\": \"pdf_text\", \"report_type\": \"cbc\", \"results\": [{\"test\": \"Hemoglobin\", \"value\": 10.2, \"unit\": \"g/dL\", \"reference_range\": \"12.0-15.5\", \"confidence\": 0.99, \"needs_verification\": false}]}"
+        "/api/retrieval response without a token": "{\"detail\": \"Not authenticated\"}",
+        "/agents/document/extract response without a token": "{\"detail\": \"Not authenticated\"}"
       },
       "notes": [
-        "Every report, chat, audit, explanation and safety route rejects anonymous calls. The retrieval and document-extraction routes do not: anyone can run OCR/NER on an uploaded report and load the embedding model, and /api/retrieval echoes whatever user_id is sent. Neither stores data or exposes another user's records, so the impact is resource abuse and an unauthenticated processing surface."
+        "Retest of IR-F04. Both routes now require get_current_user, and /api/retrieval also refuses a body user_id that differs from the token (403), matching the Safety endpoint."
       ],
       "images": [],
       "finding": "IR-F04",
       "weakness": false,
-      "outcome": "xfailed"
+      "outcome": "passed"
     },
     {
       "val_id": "IR-12",
@@ -995,42 +1013,42 @@
       "inputs": {
         "user_A": "user-a (owns report and chat)",
         "user_B": "user-b (attacker, valid token)",
-        "report_id": "3111316c-ccc6-4a7b-95b4-94a34cd4ad30",
-        "chat_id": "ec70b98f-fb02-454b-aa37-98ee3fcbe52d"
+        "report_id": "e9fcf5bd-3191-4f98-b949-d9cac79ef2d0",
+        "chat_id": "204ad441-095a-4366-aaf0-cee85e344642"
       },
       "checks": [
         {
-          "description": "GET /api/reports/3111316c-ccc6-4a7b-95b4-94a34cd4ad30",
+          "description": "GET /api/reports/e9fcf5bd-3191-4f98-b949-d9cac79ef2d0",
           "expected": "404 (same as an unknown id)",
           "actual": "404",
           "passed": true
         },
         {
-          "description": "GET /api/reports/3111316c-ccc6-4a7b-95b4-94a34cd4ad30/file",
+          "description": "GET /api/reports/e9fcf5bd-3191-4f98-b949-d9cac79ef2d0/file",
           "expected": "404 (same as an unknown id)",
           "actual": "404",
           "passed": true
         },
         {
-          "description": "PATCH /api/reports/3111316c-ccc6-4a7b-95b4-94a34cd4ad30",
+          "description": "PATCH /api/reports/e9fcf5bd-3191-4f98-b949-d9cac79ef2d0",
           "expected": "404 (same as an unknown id)",
           "actual": "404",
           "passed": true
         },
         {
-          "description": "DELETE /api/reports/3111316c-ccc6-4a7b-95b4-94a34cd4ad30",
+          "description": "DELETE /api/reports/e9fcf5bd-3191-4f98-b949-d9cac79ef2d0",
           "expected": "404 (same as an unknown id)",
           "actual": "404",
           "passed": true
         },
         {
-          "description": "GET /api/chats/ec70b98f-fb02-454b-aa37-98ee3fcbe52d",
+          "description": "GET /api/chats/204ad441-095a-4366-aaf0-cee85e344642",
           "expected": "404 (same as an unknown id)",
           "actual": "404",
           "passed": true
         },
         {
-          "description": "POST /api/chats/ec70b98f-fb02-454b-aa37-98ee3fcbe52d/messages",
+          "description": "POST /api/chats/204ad441-095a-4366-aaf0-cee85e344642/messages",
           "expected": "404 (same as an unknown id)",
           "actual": "404",
           "passed": true
@@ -1054,7 +1072,7 @@
           "passed": true
         },
         {
-          "description": "GET /api/audit/9fde5140-5582-48b9-86fd-895d7ea99ab6 as B",
+          "description": "GET /api/audit/7426884e-32aa-4d4f-81d2-9d52560ce45e as B",
           "expected": "[]",
           "actual": "[]",
           "passed": true
@@ -1153,14 +1171,14 @@
         {
           "description": "100,000-character query rejected (size limit)",
           "expected": "413/422",
-          "actual": "200 after 0.11s",
-          "passed": false
+          "actual": "422 after 0.01s",
+          "passed": true
         },
         {
           "description": "200 test names rejected (count limit)",
           "expected": "413/422",
-          "actual": "200 after 4.13s",
-          "passed": false
+          "actual": "422 after 0.01s",
+          "passed": true
         },
         {
           "description": "Server still responsive afterwards",
@@ -1197,12 +1215,12 @@
         "422 body (wrong type)": "{\"detail\": [{\"type\": \"list_type\", \"loc\": [\"body\", \"test_names\"], \"msg\": \"Input should be a valid list\", \"input\": \"LDL\"}]}"
       },
       "notes": [
-        "A 100,000-character query took 0.11s and 200 names took 4.13s; both were processed in full. Cost grows linearly with the number of names (one embedding per unknown name), and the route needs no login (IR-11)."
+        "Retest of IR-F05. RetrievalRequest now limits each test name to 120 characters and a request to 50 names, so both oversized requests are refused with 422 before any embedding work (0.01s and 0.01s, previously 0.08s and about 3.3s of full processing). The route also requires a login now (IR-11)."
       ],
       "images": [],
       "finding": "IR-F05",
       "weakness": false,
-      "outcome": "xfailed"
+      "outcome": "passed"
     },
     {
       "val_id": "IR-15a",

@@ -30,9 +30,9 @@ figcaption { font-size: 12px; color: #5c677d; margin-top: 4px; }
     <div class='meta' style='margin-top:6px'>5/5 checks met</div></div>
   </div>
   <h2>Expected behaviour (assessment section 5)</h2><div class='acc'>401 returned; the request is rejected before any business logic runs.</div>
-  <h2>Test input</h2><table class='kv'><tr><td>original_signature</td><td><pre>XiysHWOSJai7Tr7A...</pre></td></tr><tr><td>tampered_signature</td><td><pre>XiysHWOSJaA7Tr7A...</pre></td></tr><tr><td>changed</td><td><pre>one character at position 10</pre></td></tr></table>
+  <h2>Test input</h2><table class='kv'><tr><td>original_signature</td><td><pre>wlxOhWbeeC8ul-y6...</pre></td></tr><tr><td>tampered_signature</td><td><pre>wlxOhWbeeCAul-y6...</pre></td></tr><tr><td>changed</td><td><pre>one character at position 10</pre></td></tr></table>
   <h2>Expected result vs actual result</h2>
   <table><tr><th>#</th><th>Check</th><th>Expected result</th><th>Actual result</th><th>Result</th></tr><tr class='ok'><td>1</td><td>GET /auth/me</td><td class='exp'>401 Not authenticated</td><td class='act'>401 Not authenticated</td><td class='res'>PASS</td></tr><tr class='ok'><td>2</td><td>POST /agents/safety/validate</td><td class='exp'>401 Not authenticated</td><td class='act'>401 Not authenticated</td><td class='res'>PASS</td></tr><tr class='ok'><td>3</td><td>POST /api/reports</td><td class='exp'>401 Not authenticated</td><td class='act'>401 Not authenticated</td><td class='res'>PASS</td></tr><tr class='ok'><td>4</td><td>No audit entries (no business logic ran)</td><td class='exp'>0</td><td class='act'>0</td><td class='res'>PASS</td></tr><tr class='ok'><td>5</td><td>Control: original token still works</td><td class='exp'>200</td><td class='act'>200</td><td class='res'>PASS</td></tr></table>
   
-  <div class='meta' style='margin-top:18px'>Commit f90155b55f69 | on frontend | Python 3.13.9 | pytest 8.4.2 | executed 2026-10-02T21:13:46+05:30</div>
+  <div class='meta' style='margin-top:18px'>Commit 16647a0c372a | on Throw-away-test-branch | Python 3.13.9 | pytest 8.4.2 | executed 2026-10-02T22:07:43+05:30</div>
 </div></body></html>

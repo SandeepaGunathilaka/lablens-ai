@@ -24,28 +24,23 @@ figcaption { font-size: 12px; color: #5c677d; margin-top: 4px; }
 collecting ... collected 17 items
 
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir01_exact_term_retrieval <span style='color:#4ade80'>PASSED</span> [  5%]
-tests/retrieval_security_validation/test_retrieval_security.py::test_ir02_semantic_retrieval <span style='color:#f87171'>XFAIL</span> [ 11%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir02_semantic_retrieval <span style='color:#4ade80'>PASSED</span> [ 11%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir03_topk_ranking_and_duplicates <span style='color:#4ade80'>PASSED</span> [ 17%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir04_unsupported_query <span style='color:#4ade80'>PASSED</span> [ 23%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir05_query_stuffing <span style='color:#4ade80'>PASSED</span> [ 29%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir06_instruction_injection_in_query <span style='color:#4ade80'>PASSED</span> [ 35%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir07_poisoned_knowledge_base_chunk <span style='color:#4ade80'>PASSED</span> [ 41%]
-tests/retrieval_security_validation/test_retrieval_security.py::test_ir08a_irrelevant_retrieval <span style='color:#f87171'>XFAIL</span> [ 47%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir08a_irrelevant_retrieval <span style='color:#4ade80'>PASSED</span> [ 47%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir08b_conflicting_and_unsupported_context <span style='color:#4ade80'>PASSED</span> [ 52%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir09_source_provenance <span style='color:#4ade80'>PASSED</span> [ 58%]
-tests/retrieval_security_validation/test_retrieval_security.py::test_ir10_trusted_corpus_boundary <span style='color:#f87171'>XFAIL</span> [ 64%]
-tests/retrieval_security_validation/test_retrieval_security.py::test_ir11_unauthenticated_access <span style='color:#f87171'>XFAIL</span> [ 70%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir10_trusted_corpus_boundary <span style='color:#4ade80'>PASSED</span> [ 64%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir11_unauthenticated_access <span style='color:#4ade80'>PASSED</span> [ 70%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir12_invalid_and_expired_jwt <span style='color:#4ade80'>PASSED</span> [ 76%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir13_cross_user_resource_access <span style='color:#4ade80'>PASSED</span> [ 82%]
-tests/retrieval_security_validation/test_retrieval_security.py::test_ir14_api_validation_and_limits <span style='color:#f87171'>XFAIL</span> [ 88%]
+tests/retrieval_security_validation/test_retrieval_security.py::test_ir14_api_validation_and_limits <span style='color:#4ade80'>PASSED</span> [ 88%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir15a_cors_policy <span style='color:#4ade80'>PASSED</span> [ 94%]
 tests/retrieval_security_validation/test_retrieval_security.py::test_ir15b_transport_security <span style='color:#facc15'>SKIPPED</span> [100%]
 
 =========================== short test summary info ===========================
-<span style='color:#f87171'>XFAIL</span> tests/retrieval_security_validation/test_retrieval_security.py::test_ir02_semantic_retrieval - IR-F01: semantic paraphrases abstain under the frozen margin policy
-<span style='color:#f87171'>XFAIL</span> tests/retrieval_security_validation/test_retrieval_security.py::test_ir08a_irrelevant_retrieval - IR-F02: evidence for a different test is accepted without a consistency check
-<span style='color:#f87171'>XFAIL</span> tests/retrieval_security_validation/test_retrieval_security.py::test_ir10_trusted_corpus_boundary - IR-F03: KB validation has no trusted-source allow-list
-<span style='color:#f87171'>XFAIL</span> tests/retrieval_security_validation/test_retrieval_security.py::test_ir11_unauthenticated_access - IR-F04: /api/retrieval and /agents/document/extract accept unauthenticated calls
-<span style='color:#f87171'>XFAIL</span> tests/retrieval_security_validation/test_retrieval_security.py::test_ir14_api_validation_and_limits - IR-F05: no size limits on retrieval requests
 <span style='color:#facc15'>SKIPPED</span> [1] tests\evidence_support.py:94: No deployed HTTPS environment exists; TLS configuration and HTTP-to-HTTPS enforcement cannot be observed.
-================== 11 passed, 1 skipped, 5 xfailed in 18.17s ==================</pre></div></body></html>
+======================= 16 passed, 1 skipped in 35.58s ========================</pre></div></body></html>

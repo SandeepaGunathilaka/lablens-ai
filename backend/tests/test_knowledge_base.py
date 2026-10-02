@@ -28,7 +28,7 @@ def document():
         "what_it_measures": "Fixture text.", "general_information": "Fixture text.",
         "source": {
             "publisher": "Example", "title": "Example source",
-            "url": "https://example.invalid/source", "accessed_date": "2026-09-28",
+            "url": "https://medlineplus.gov/source", "accessed_date": "2026-09-28",
         },
     }
 

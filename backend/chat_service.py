@@ -33,6 +33,7 @@ from coordinator import (
     default_explanation,
     rejection_note,
 )
+from chat_intent import ChatIntent
 from explanation_agent.models import ExplanationFinding, ExplanationRequest, ExplanationResponse, GenerationMode
 from logging_service import log_event
 
@@ -64,9 +65,27 @@ class AnswerFinding(BaseModel):
 
 class ChatAnswer(BaseModel):
     task_id: str
-    status: Literal["approved", "fallback"]
+    # "reply" and "redirect" are answered from the question alone, without generated text.
+    status: Literal["approved", "fallback", "reply", "redirect"]
     findings: list[AnswerFinding] = Field(default_factory=list)
     message: str | None = None
+
+
+def intent_reply(*, report_id: str, user_id: str, intent: ChatIntent, audit_logs: Collection) -> ChatAnswer:
+    """Answer a question that needs no explanation: a doctor referral, small talk or an off-topic note."""
+    task_id = str(uuid.uuid4())
+    status = "redirect" if intent.kind == "diagnosis" else "reply"
+    log_event(
+        audit_logs,
+        task_id=task_id,
+        report_id=report_id,
+        user_id=user_id,
+        agent="coordinator",
+        action="answer_question",
+        status=status,
+        details={"intent": intent.kind},
+    )
+    return ChatAnswer(task_id=task_id, status=status, message=intent.reply)
 
 
 def source_links(source: RetrievedSource | None) -> list[SourceLink]:

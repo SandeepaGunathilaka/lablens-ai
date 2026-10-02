@@ -8,17 +8,26 @@ from __future__ import annotations
 
 from functools import lru_cache
 from io import BytesIO
+from pathlib import Path
 import re
+import shutil
 from typing import Annotated, Literal
 
 import pymupdf as fitz
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
 import pytesseract
 from pytesseract import Output
 
+from security.dependencies import get_current_user
+
 router = APIRouter(prefix="/agents/document", tags=["document-agent"])
+
+# The Windows installer does not add Tesseract to PATH.
+WINDOWS_TESSERACT = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+if shutil.which("tesseract") is None and WINDOWS_TESSERACT.exists():
+    pytesseract.pytesseract.tesseract_cmd = str(WINDOWS_TESSERACT)
 
 SUPPORTED_SUFFIXES = {".pdf", ".png", ".jpg", ".jpeg"}
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -333,7 +342,10 @@ def extract_document(filename: str, content: bytes) -> DocumentExtractionRespons
 
 
 @router.post("/extract", response_model=DocumentExtractionResponse)
-async def extract_report(file: Annotated[UploadFile, File(description="CBC or lipid report")]):
+async def extract_report(
+    file: Annotated[UploadFile, File(description="CBC or lipid report")],
+    current_user: Annotated[str, Depends(get_current_user)],
+):
     """Upload a PDF/PNG/JPEG report and receive non-diagnostic structured fields."""
     try:
         content = await file.read()

@@ -568,3 +568,26 @@ def test_retrieval_exception_is_audited_without_crashing(audit_logs):
     [entry] = list(audit_logs.find({"task_id": result.task_id, "agent": "retrieval_agent"}))
     assert (entry["action"], entry["status"]) == ("retrieve", "error")
     assert entry["details"] == {"error_type": "RuntimeError"}
+
+
+def test_default_retrieval_keeps_evidence_when_one_test_fails(monkeypatch):
+    from agents.retrieval_models import RetrievalResponse, RetrievalResult
+    from agents.vector_store import VectorIndexNotBuiltError
+
+    class Agent:
+        def retrieve(self, request):
+            if "VLDL Cholesterol" in request.test_names:
+                raise VectorIndexNotBuiltError("missing index")
+            return RetrievalResponse(**request.model_dump(exclude={"test_names"}),
+                                     results=[RetrievalResult(test_name=n, found=False) for n in request.test_names])
+
+    monkeypatch.setattr(coordinator, "_default_retrieval_agent", lambda: Agent())
+    request = RetrievalRequest(task_id="t", report_id="r", user_id="u", test_names=["Total Cholesterol", "VLDL Cholesterol"])
+
+    response = coordinator.default_retrieval(request)
+
+    assert [r.test_name for r in response.results] == ["Total Cholesterol", "VLDL Cholesterol"]
+    assert (response.task_id, response.report_id, response.user_id) == ("t", "r", "u")
+    only_failing = request.model_copy(update={"test_names": ["VLDL Cholesterol", "VLDL Cholesterol"]})
+    with pytest.raises(RuntimeError):
+        coordinator.default_retrieval(only_failing)
